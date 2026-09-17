@@ -5,40 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Segnalazioni Rapide</title>
     <style>
-        /* CSS PURO INTEGRATO - Nessun caricamento esterno, velocità massima */
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: #111827; color: #ffffff; padding-bottom: 30px; }
+        /* CSS INTERNO LEGGERISSIMO - Velocità istantanea senza internet */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+        body { background-color: #111827; color: #ffffff; padding-bottom: 40px; }
         
-        /* Indicatore di Rete */
-        #status-rete { font-size: 11px; font-weight: bold; text-align: center; padding: 4px; transition: all 0.3s; }
+        #status-rete { font-size: 11px; font-weight: bold; text-align: center; padding: 5px; }
         .online { background-color: #059669; }
         .offline { background-color: #ea580c; }
 
-        main { max-width: 450px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+        main { max-width: 450px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 14px; }
 
-        /* AREA FOTO IN ALTO */
-        .box-foto { 
-            width: 100%; 
-            aspect-ratio: 16 / 9; 
+        /* SEZIONE SCATTO CON ANTEPRIMA PICCOLA */
+        .area-scatto { display: flex; align-items: center; background-color: #1f2937; padding: 12px; border-radius: 16px; border: 1px solid #374151; gap: 12px; }
+        
+        .box-miniatura { 
+            width: 70px; 
+            height: 70px; 
             border: 2px dashed #4b5563; 
-            border-radius: 16px; 
+            border-radius: 12px; 
             background-color: #030712; 
             display: flex; 
-            flex-direction: column; 
             align-items: center; 
             justify-content: center; 
             cursor: pointer; 
-            position: relative; 
             overflow: hidden;
+            position: relative;
+            flex-shrink: 0;
         }
         #camera-input { display: none; }
-        .placeholder-testo { text-align: center; color: #9ca3af; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
-        .placeholder-testo span { display: block; font-size: 45px; margin-bottom: 4px; }
-        #preview { position: absolute; inset: 0; width: 100%; height: 100%; object-cover: cover; display: none; }
+        .icona-cam { font-size: 24px; }
+        #anteprime-scatto-img { width: 100%; height: 100%; object-fit: cover; display: none; }
 
-        /* AREA PULSANTI E OPZIONI IN BASSO */
+        .dettagli-scatto { flex-grow: 1; display: flex; flex-direction: column; gap: 4px; }
+        .titolo-scatto { font-size: 13px; font-weight: bold; color: #9ca3af; }
+        .stato-scatto { font-size: 11px; color: #6b7280; font-style: italic; }
+
+        /* PANNELLO COMANDI SOTTO */
         .pannello-comandi { background-color: #1f2937; border-radius: 16px; padding: 16px; border: 1px solid #374151; display: flex; flex-direction: column; gap: 12px; }
-        
         .riga-doppia { display: grid; grid-template-cols: 1fr 1fr; gap: 8px; }
         label { display: block; font-size: 11px; color: #9ca3af; margin-bottom: 4px; font-weight: 500; }
         
@@ -52,52 +55,54 @@
             font-size: 13px; 
             outline: none; 
         }
-        select:focus, input[type="text"]:focus { border-color: #3b82f6; }
+        .btn-gps { width: 100%; height: 38px; background-color: #2563eb; color: white; border: none; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; }
+        #gps-status { font-size: 10px; color: #9ca3af; font-family: monospace; text-align: center; background-color: #030712; padding: 5px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        .btn-gps { width: 100%; height: 38px; background-color: #2563eb; color: white; border: none; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
-        .btn-gps:hover { background-color: #1d4ed8; }
-        
-        #gps-status { font-size: 10px; color: #9ca3af; font-family: monospace; text-align: center; background-color: #030712; padding: 4px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .btn-salva { width: 100%; padding: 12px; background-color: #3b82f6; color: white; border: none; border-radius: 12px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 4px; }
 
-        /* Pulsanti di azione principali */
-        .btn-wa { width: 100%; padding: 12px; background-color: #22c55e; color: #030712; border: none; border-radius: 12px; font-size: 14px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2); }
-        .btn-wa:hover { background-color: #4ade80; }
-        
-        .btn-share { width: 100%; padding: 10px; background-color: #3b82f6; color: white; border: none; border-radius: 12px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
-        .btn-share:hover { background-color: #60a5fa; }
-
-        /* ARCHIVIO FOTO IN FONDO */
-        .titolo-archivio { font-size: 11px; font-weight: bold; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 4px; margin-top: 8px; }
+        /* ARCHIVIO FOTO SUL DISPOSITIVO */
+        .titolo-archivio { font-size: 11px; font-weight: bold; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 4px; }
         .lista-schede { display: flex; flex-direction: column; gap: 10px; }
-        .scheda { background-color: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
-        .scheda-header { display: flex; justify-content: space-between; font-weight: bold; color: #f3f4f6; }
-        .scheda-data { font-size: 10px; font-weight: normal; color: #6b7280; }
-        .scheda img { width: 100%; height: 110px; object-fit: cover; border-radius: 8px; }
-        .scheda-gps { font-family: monospace; font-size: 10px; background-color: #030712; padding: 6px; border-radius: 6px; color: #9ca3af; }
-        .scheda-note { font-style: italic; color: #d1d5db; }
-        .scheda-azioni { display: grid; grid-template-cols: 1fr 1fr; gap: 6px; margin-top: 4px; }
-        .btn-ri-invia { background-color: #4b5563; color: white; border: none; padding: 6px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 500; }
-        .btn-elimina { background-color: #7f1d1d; color: #fca5a5; border: none; padding: 6px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 500; }
-        .info-vuoto { color: #6b7280; font-size: 11px; font-style: italic; text-align: center; padding: 16px 0; }
+        .scheda { background-color: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 10px; display: flex; align-items: center; gap: 12px; }
+        .scheda-info { flex-grow: 1; font-size: 12px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+        .scheda-titolo { font-weight: bold; color: #f3f4f6; }
+        .scheda-gps { font-family: monospace; font-size: 10px; color: #9ca3af; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
+        .scheda-img { width: 55px; height: 55px; object-fit: cover; border-radius: 8px; cursor: pointer; flex-shrink: 0; }
+        .btn-cestino { background-color: #7f1d1d; color: #fca5a5; border: none; padding: 6px 10px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+
+        /* MODALE GALLERIA A SCHERMO INTERO */
+        .galleria-overlay { display: none; position: fixed; inset: 0; background-color: rgba(3, 7, 18, 0.98); z-index: 999; flex-direction: column; }
+        .galleria-header { display: flex; justify-content: space-between; padding: 16px; align-items: center; border-bottom: 1px solid #1f2937; }
+        .btn-chiudi { background: none; border: none; color: white; font-size: 24px; cursor: pointer; }
+        .galleria-corpo { flex-grow: 1; display: flex; align-items: center; justify-content: center; padding: 10px; overflow: hidden; }
+        #galleria-immagine-focus { max-width: 100%; max-height: 70vh; object-fit: contain; border-radius: 8px; }
+        .galleria-footer { padding: 16px; background-color: #111827; border-top: 1px solid #1f2937; display: flex; flex-direction: column; gap: 8px; }
+        
+        .btn-wa { width: 100%; padding: 12px; background-color: #22c55e; color: #030712; border: none; border-radius: 12px; font-size: 14px; font-weight: 900; cursor: pointer; text-align: center; }
+        .btn-share { width: 100%; padding: 10px; background-color: #3b82f6; color: white; border: none; border-radius: 12px; font-size: 13px; font-weight: bold; cursor: pointer; }
+        
+        .info-vuoto { color: #6b7280; font-size: 11px; font-style: italic; text-align: center; padding: 12px 0; }
     </style>
 </head>
 <body>
 
-    <!-- Stato Rete -->
     <div id="status-rete" class="online">Connesso a Internet</div>
 
     <main>
-        <!-- [SOPRA] AREA FOTOCAMERA -->
-        <div class="box-foto" onclick="document.getElementById('camera-input').click()">
-            <input type="file" accept="image/*" capture="environment" id="camera-input" onchange="previewImage(event)">
-            <div id="upload-placeholder" class="placeholder-testo">
-                <span>📸</span>
-                Tocca per scattare la foto
+        <!-- ANTEPRIMA PICCOLA IN ALTO -->
+        <div class="area-scatto">
+            <div class="box-miniatura" id="box-scatto-click" onclick="azioneMiniatura()">
+                <input type="file" accept="image/*" capture="environment" id="camera-input" onchange="previewImage(event)">
+                <div id="upload-placeholder" class="icona-cam">📸</div>
+                <img id="anteprime-scatto-img" alt="Miniatura">
             </div>
-            <img id="preview" alt="Anteprima">
+            <div class="dettagli-scatto">
+                <span class="titolo-scatto" id="testo-stato-foto">Nessuna foto acquisita</span>
+                <span class="stato-scatto" id="sotto-testo-foto">Tocca l'icona per scattare</span>
+            </div>
         </div>
 
-        <!-- [SOTTO] AREA PULSANTI E IMPOSTAZIONI -->
+        <!-- IMPOSTAZIONI E COMPILAZIONE DATI -->
         <div class="pannello-comandi">
             <div class="riga-doppia">
                 <div>
@@ -124,71 +129,57 @@
                 <input type="text" id="note" placeholder="Es. vicino al civico 4...">
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
-                <button onclick="gestisciSalvataggioECondivisione('whatsapp')" class="btn-wa">
-                    💬 Condividi su WhatsApp
-                </button>
-                <button onclick="gestisciSalvataggioECondivisione('share')" class="btn-share">
-                    🔗 Invia ad altre App
-                </button>
-            </div>
+            <button onclick="salvaSuDispositivo()" class="btn-salva">
+                💾 Salva nella memoria del Telefono
+            </button>
         </div>
 
-        <!-- ARCHIVIO IN FONDO -->
+        <!-- STORICO LOCALE IN BASSO -->
         <h2 class="titolo-archivio">Archivio Foto sul Dispositivo</h2>
-        <div id="lista-segnalazioni" class="lista-schede">
-            <!-- Riempito via JS -->
-        </div>
+        <div id="lista-segnalazioni" class="lista-schede"></div>
     </main>
+
+    <!-- SCHERMO INTERO INTERNO (VISUALIZZATORE GALLERIA) -->
+    <div id="galleria-overlay" class="galleria-overlay">
+        <div class="galleria-header">
+            <span id="galleria-titolo-problema" style="font-weight: bold;">Anteprima Segnalazione</span>
+            <button onclick="chiudiGalleria()" class="btn-chiudi">✕</button>
+        </div>
+        <div class="galleria-corpo">
+            <img id="galleria-immagine-focus" src="" alt="Galleria Focus">
+        </div>
+        <div class="galleria-footer">
+            <button id="btn-condividi-wa" class="btn-wa">💬 Condividi su WhatsApp</button>
+            <button id="btn-condividi-share" class="btn-share">🔗 Invia ad altre App</button>
+        </div>
+    </div>
 
     <script>
         let coordinateAttuali = null;
         let fotoBase64 = null;
         let fileCondivisibile = null;
+        let segnalazioneSelezionataPerCondivisione = null;
 
         function aggiornaStatoRete() {
             const bar = document.getElementById('status-rete');
             if (bar) {
-                if (navigator.onLine) {
-                    bar.innerText = "Connesso a Internet";
-                    bar.className = "online";
-                } else {
-                    bar.innerText = "Modalità Offline (Salvataggio locale)";
-                    bar.className = "offline";
-                }
+                if (navigator.onLine) { bar.innerText = "Connesso a Internet"; bar.className = "online"; }
+                else { bar.innerText = "Modalità Offline (Salvataggio locale)"; bar.className = "offline"; }
             }
         }
         window.addEventListener('online', aggiornaStatoRete);
         window.addEventListener('offline', aggiornaStatoRete);
 
-        function previewImage(event) {
-            const files = event.target.files;
-            if (!files || files.length === 0) return;
-            fileCondivisibile = files[0];
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                fotoBase64 = e.target.result;
-                const previewImg = document.getElementById('preview');
-                previewImg.src = fotoBase64;
-                previewImg.style.display = 'block';
-                document.getElementById('upload-placeholder').style.display = 'none';
+        // Controlla cosa fare quando si clicca sul quadratino in alto
+        function azioneMiniatura() {
+            if (fotoBase64) {
+                // Se la foto è già stata scattata, cliccandoci sopra si apre la galleria interna
+                apriGalleria(fotoBase64, document.getElementById('categoria').value, document.getElementById('note').value, coordinateAttuali);
+            } else {
+                // Se è vuoto, apre la fotocamera
+                document.getElementById('camera-input').click();
             }
-            reader.readAsDataURL(fileCondivisibile);
-            ottieniPosizione();
         }
 
-        function ottieniPosizione() {
-            const status = document.getElementById('gps-status');
-            const btnText = document.getElementById('gps-btn-text');
-            if (!navigator.geolocation) { status.innerText = "GPS non supportato"; return; }
-            
-            btnText.innerText = "Ricerca...";
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    coordinateAttuali = { lat: position.coords.latitude.toFixed(6), lng: position.coords.longitude.toFixed(6) };
-                    btnText.innerText = "Rilevato ✓";
-                    status.innerText = `Posizione: ${coordinateAttuali.lat}, ${coordinateAttuali.lng}`;
-                },
-                (error) => {
-                    btnText.innerText = "Rileva GPS";
+        function previewImage(event) {
+            const files = event.target.files;
