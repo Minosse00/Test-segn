@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Segnalazioni Rapide</title>
     <style>
-        /* CSS INTERNO LEGGERISSIMO - Velocità massima */
+        /* CSS INTERNO LEGGERISSIMO - Nessun caricamento esterno */
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
-        body { background-color: #111827; color: #ffffff; padding-bottom: 40px; }
+        body { background-color: #111827; color: #ffffff; padding-bottom: 40px; -webkit-tap-highlight-color: transparent; }
         
         #status-rete { font-size: 11px; font-weight: bold; text-align: center; padding: 5px; }
         .online { background-color: #059669; }
@@ -15,7 +15,7 @@
 
         main { max-width: 450px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 14px; }
 
-        /* AREA SCATTO CON PULSANTE E ANTEPRIMA PICCOLA */
+        /* AREA SCATTO IN ALTO */
         .area-scatto { display: flex; align-items: center; background-color: #1f2937; padding: 12px; border-radius: 16px; border: 1px solid #374151; gap: 12px; }
         
         .btn-scatta-principale {
@@ -35,7 +35,6 @@
             gap: 8px;
             box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2);
         }
-        .btn-scatta-principale:hover { background-color: #1d4ed8; }
         
         .box-miniatura-anteprima { 
             width: 55px; 
@@ -106,14 +105,12 @@
     <main>
         <!-- SEZIONE SCATTO IN ALTO -->
         <div class="area-scatto">
-            <!-- Pulsante per attivare la fotocamera -->
-            <button class="btn-scatta-principale" onclick="document.getElementById('camera-input').click()">
+            <button class="btn-scatta-principale" onclick="avviaFotocamera()">
                 📸 Fai Foto Segnalazione
             </button>
             <input type="file" accept="image/*" capture="environment" id="camera-input" onchange="previewImage(event)">
             
-            <!-- Quadratino miniatura dinamico -->
-            <div class="box-miniatura-anteprima" id="box-miniatura-click" onclick="azioneMiniatura()">
+            <div class="box-miniatura-anteprima" onclick="azioneMiniatura()">
                 <div id="upload-placeholder" class="icona-vuota">🖼️</div>
                 <img id="anteprime-scatto-img" alt="Miniatura">
             </div>
@@ -187,7 +184,13 @@
         window.addEventListener('online', aggiornaStatoRete);
         window.addEventListener('offline', aggiornaStatoRete);
 
-        // Controlla il click sulla miniatura quadrata
+        function avviaFotocamera() {
+            document.getElementById('camera-input').click();
+        }
+
         function azioneMiniatura() {
             if (fotoBase64) {
-                // Se c'è la foto, cliccandoci sopra si apre la galleria interna a schermo intero
+                apriGalleria(fotoBase64, document.getElementById('categoria').value, document.getElementById('note').value, coordinateAttuali);
+            } else {
+                alert("Scatta prima una foto usando il pulsante blu!");
+            }
