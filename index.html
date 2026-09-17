@@ -2,208 +2,193 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Segnalazioni Stradali</title>
-    <!-- Tailwind CSS per una grafica moderna e mobile-first -->
-    <script src="https://jsdelivr.net"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Segnalazioni Rapide</title>
     <style>
-        /* Nasconde l'input file nativo ma lo rende cliccabile */
+        /* CSS PURO INTEGRATO - Nessun caricamento esterno, velocità massima */
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #111827; color: #ffffff; padding-bottom: 30px; }
+        
+        /* Indicatore di Rete */
+        #status-rete { font-size: 11px; font-weight: bold; text-align: center; padding: 4px; transition: all 0.3s; }
+        .online { background-color: #059669; }
+        .offline { background-color: #ea580c; }
+
+        main { max-width: 450px; margin: 0 auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; }
+
+        /* AREA FOTO IN ALTO */
+        .box-foto { 
+            width: 100%; 
+            aspect-ratio: 16 / 9; 
+            border: 2px dashed #4b5563; 
+            border-radius: 16px; 
+            background-color: #030712; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            position: relative; 
+            overflow: hidden;
+        }
         #camera-input { display: none; }
+        .placeholder-testo { text-align: center; color: #9ca3af; font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+        .placeholder-testo span { display: block; font-size: 45px; margin-bottom: 4px; }
+        #preview { position: absolute; inset: 0; width: 100%; height: 100%; object-cover: cover; display: none; }
+
+        /* AREA PULSANTI E OPZIONI IN BASSO */
+        .pannello-comandi { background-color: #1f2937; border-radius: 16px; padding: 16px; border: 1px solid #374151; display: flex; flex-direction: column; gap: 12px; }
+        
+        .riga-doppia { display: grid; grid-template-cols: 1fr 1fr; gap: 8px; }
+        label { display: block; font-size: 11px; color: #9ca3af; margin-bottom: 4px; font-weight: 500; }
+        
+        select, input[type="text"] { 
+            width: 100%; 
+            padding: 10px; 
+            background-color: #374151; 
+            border: 1px solid #4b5563; 
+            border-radius: 10px; 
+            color: #ffffff; 
+            font-size: 13px; 
+            outline: none; 
+        }
+        select:focus, input[type="text"]:focus { border-color: #3b82f6; }
+
+        .btn-gps { width: 100%; height: 38px; background-color: #2563eb; color: white; border: none; border-radius: 10px; font-size: 12px; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        .btn-gps:hover { background-color: #1d4ed8; }
+        
+        #gps-status { font-size: 10px; color: #9ca3af; font-family: monospace; text-align: center; background-color: #030712; padding: 4px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        /* Pulsanti di azione principali */
+        .btn-wa { width: 100%; padding: 12px; background-color: #22c55e; color: #030712; border: none; border-radius: 12px; font-size: 14px; font-weight: 900; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.2); }
+        .btn-wa:hover { background-color: #4ade80; }
+        
+        .btn-share { width: 100%; padding: 10px; background-color: #3b82f6; color: white; border: none; border-radius: 12px; font-size: 13px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; }
+        .btn-share:hover { background-color: #60a5fa; }
+
+        /* ARCHIVIO FOTO IN FONDO */
+        .titolo-archivio { font-size: 11px; font-weight: bold; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 4px; margin-top: 8px; }
+        .lista-schede { display: flex; flex-direction: column; gap: 10px; }
+        .scheda { background-color: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; font-size: 12px; }
+        .scheda-header { display: flex; justify-content: space-between; font-weight: bold; color: #f3f4f6; }
+        .scheda-data { font-size: 10px; font-weight: normal; color: #6b7280; }
+        .scheda img { width: 100%; height: 110px; object-fit: cover; border-radius: 8px; }
+        .scheda-gps { font-family: monospace; font-size: 10px; background-color: #030712; padding: 6px; border-radius: 6px; color: #9ca3af; }
+        .scheda-note { font-style: italic; color: #d1d5db; }
+        .scheda-azioni { display: grid; grid-template-cols: 1fr 1fr; gap: 6px; margin-top: 4px; }
+        .btn-ri-invia { background-color: #4b5563; color: white; border: none; padding: 6px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 500; }
+        .btn-elimina { background-color: #7f1d1d; color: #fca5a5; border: none; padding: 6px; border-radius: 6px; font-size: 11px; cursor: pointer; font-weight: 500; }
+        .info-vuoto { color: #6b7280; font-size: 11px; font-style: italic; text-align: center; padding: 16px 0; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans antialiased pb-10">
+<body>
 
-    <!-- Header -->
-    <header class="bg-blue-600 text-white p-4 shadow-md sticky top-0 z-10">
-        <h1 class="text-xl font-bold text-center">Segnalazioni Territorio 🚧</h1>
-    </header>
+    <!-- Stato Rete -->
+    <div id="status-rete" class="online">Connesso a Internet</div>
 
-    <main class="max-w-md mx-auto p-4 space-y-6">
+    <main>
+        <!-- [SOPRA] AREA FOTOCAMERA -->
+        <div class="box-foto" onclick="document.getElementById('camera-input').click()">
+            <input type="file" accept="image/*" capture="environment" id="camera-input" onchange="previewImage(event)">
+            <div id="upload-placeholder" class="placeholder-testo">
+                <span>📸</span>
+                Tocca per scattare la foto
+            </div>
+            <img id="preview" alt="Anteprima">
+        </div>
 
-        <!-- Sezione Nuova Segnalazione -->
-        <div class="bg-white p-5 rounded-2xl shadow-sm space-y-4">
-            <h2 class="text-lg font-semibold text-gray-800">Nuova Segnalazione</h2>
-
-            <!-- Pulsante Fotocamera -->
-            <div class="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 bg-gray-50 cursor-pointer hover:bg-gray-100" onclick="document.getElementById('camera-input').click()">
-                <input type="file" accept="image/*" capture="environment" id="camera-input" onchange="previewImage(event)">
-                <div id="upload-placeholder" class="text-center py-4">
-                    <span class="text-4xl">📸</span>
-                    <p class="text-sm text-gray-500 mt-2 font-medium">Tocca per scattare la foto</p>
+        <!-- [SOTTO] AREA PULSANTI E IMPOSTAZIONI -->
+        <div class="pannello-comandi">
+            <div class="riga-doppia">
+                <div>
+                    <label>Tipo Problema</label>
+                    <select id="categoria">
+                        <option value="🕳️ Buca stradale">🕳️ Buche</option>
+                        <option value="🌱 Taglio erba">🌱 Taglio Erba</option>
+                        <option value="🛑 Segnaletica">🛑 Segnaletica</option>
+                        <option value="⚙️ Altro">⚙️ Altro</option>
+                    </select>
                 </div>
-                <img id="preview" class="hidden rounded-lg max-h-64 object-cover w-full shadow-sm" alt="Anteprima">
+                <div>
+                    <label>Posizione GPS</label>
+                    <button type="button" onclick="ottieniPosizione()" class="btn-gps">
+                        📍 <span id="gps-btn-text">Rileva GPS</span>
+                    </button>
+                </div>
+            </div>
+            
+            <p id="gps-status">Nessuna coordinata acquisita</p>
+
+            <div>
+                <label>Note / Dettagli strada (opzionale)</label>
+                <input type="text" id="note" placeholder="Es. vicino al civico 4...">
             </div>
 
-            <!-- Selezione Categoria -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Tipo di problema</label>
-                <select id="categoria" class="w-full p-3 border border-gray-300 rounded-xl bg-white focus:ring-2 focus:ring-blue-500 outline-none">
-                    <option value="Buca stradale">🕳️ Bucca stradale</option>
-                    <option value="Taglio erba / Verde pubblico">🌱 Taglio erba / Verde</option>
-                    <option value="Sostituzione segnaletica">🛑 Sostituzione segnaletica</option>
-                    <option value="Altro">⚙️ Altro</option>
-                </select>
-            </div>
-
-            <!-- Geolocalizzazione -->
-            <div>
-                <button type="button" onclick="ottieniPosizione()" class="w-full bg-gray-800 text-white py-3 rounded-xl font-medium hover:bg-gray-900 transition flex items-center justify-center gap-2">
-                    📍 <span id="gps-btn-text">Rileva Posizione GPS</span>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 4px;">
+                <button onclick="gestisciSalvataggioECondivisione('whatsapp')" class="btn-wa">
+                    💬 Condividi su WhatsApp
                 </button>
-                <p id="gps-status" class="text-xs text-gray-500 mt-2 text-center font-mono break-all"></p>
-            </div>
-
-            <!-- Note aggiuntive -->
-            <div>
-                <label class="block text-sm font-medium text-gray-700 mb-1">Note (opzionale)</label>
-                <textarea id="note" rows="2" class="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none" placeholder="Aggiungi dettagli..."></textarea>
-            </div>
-
-            <!-- Pulsante Invia -->
-            <button onclick="salvaSegnalazione()" class="w-full bg-green-600 text-white py-4 rounded-xl font-bold shadow-md hover:bg-green-700 transition">
-                Invia Segnalazione
-            </button>
-        </div>
-
-        <!-- Elenco Segnalazioni Salvate (Archivio Locale) -->
-        <div class="space-y-3">
-            <h2 class="text-lg font-semibold text-gray-800 px-1">Segnalazioni Inviate (Locali)</h2>
-            <div id="lista-segnalazioni" class="space-y-3">
-                <!-- I dati dinamici appariranno qui -->
-                <p class="text-gray-400 text-sm italic text-center py-4">Nessuna segnalazione presente.</p>
+                <button onclick="gestisciSalvataggioECondivisione('share')" class="btn-share">
+                    🔗 Invia ad altre App
+                </button>
             </div>
         </div>
 
+        <!-- ARCHIVIO IN FONDO -->
+        <h2 class="titolo-archivio">Archivio Foto sul Dispositivo</h2>
+        <div id="lista-segnalazioni" class="lista-schede">
+            <!-- Riempito via JS -->
+        </div>
     </main>
 
     <script>
         let coordinateAttuali = null;
         let fotoBase64 = null;
+        let fileCondivisibile = null;
 
-        // Gestione anteprima foto e conversione in Base64
+        function aggiornaStatoRete() {
+            const bar = document.getElementById('status-rete');
+            if (bar) {
+                if (navigator.onLine) {
+                    bar.innerText = "Connesso a Internet";
+                    bar.className = "online";
+                } else {
+                    bar.innerText = "Modalità Offline (Salvataggio locale)";
+                    bar.className = "offline";
+                }
+            }
+        }
+        window.addEventListener('online', aggiornaStatoRete);
+        window.addEventListener('offline', aggiornaStatoRete);
+
         function previewImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            fileCondivisibile = files[0];
 
             const reader = new FileReader();
             reader.onload = function(e) {
                 fotoBase64 = e.target.result;
-                const preview = document.getElementById('preview');
-                const placeholder = document.getElementById('upload-placeholder');
-                
-                preview.src = fotoBase64;
-                preview.classList.remove('hidden');
-                placeholder.classList.add('hidden');
+                const previewImg = document.getElementById('preview');
+                previewImg.src = fotoBase64;
+                previewImg.style.display = 'block';
+                document.getElementById('upload-placeholder').style.display = 'none';
             }
-            reader.readAsDataURL(file);
-            
-            // Appena scatta la foto, prova a prendere anche il GPS automaticamente
+            reader.readAsDataURL(fileCondivisibile);
             ottieniPosizione();
         }
 
-        // Funzione GPS nativa dello smartphone
         function ottieniPosizione() {
             const status = document.getElementById('gps-status');
             const btnText = document.getElementById('gps-btn-text');
-
-            if (!navigator.geolocation) {
-                status.innerText = "Geolocalizzazione non supportata dal browser.";
-                return;
-            }
-
-            btnText.innerText = "Rilevamento in corso...";
+            if (!navigator.geolocation) { status.innerText = "GPS non supportato"; return; }
             
+            btnText.innerText = "Ricerca...";
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    coordinateAttuali = {
-                        lat: position.coords.latitude.toFixed(6),
-                        lng: position.coords.longitude.toFixed(6)
-                    };
-                    btnText.innerText = "Posizione Rilevata ✓";
-                    status.innerHTML = `Lat: ${coordinateAttuali.lat} <br> Lng: ${coordinateAttuali.lng}`;
+                    coordinateAttuali = { lat: position.coords.latitude.toFixed(6), lng: position.coords.longitude.toFixed(6) };
+                    btnText.innerText = "Rilevato ✓";
+                    status.innerText = `Posizione: ${coordinateAttuali.lat}, ${coordinateAttuali.lng}`;
                 },
                 (error) => {
-                    btnText.innerText = "Rileva Posizione GPS";
-                    status.innerText = "Errore GPS: Permesso negato o segnale assente.";
-                    console.error(error);
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        }
-
-        // Salva la segnalazione nella memoria dello smartphone (LocalStorage)
-        function salvaSegnalazione() {
-            const categoria = document.getElementById('categoria').value;
-            const note = document.getElementById('note').value;
-
-            if (!fotoBase64) {
-                alert("Per favore, scatta una foto prima di inviare.");
-                return;
-            }
-            if (!coordinateAttuali) {
-                alert("Attendi il rilevamento della posizione GPS o riprova.");
-                return;
-            }
-
-            const nuovaSegnalazione = {
-                id: Date.now(),
-                categoria,
-                note,
-                coords: coordinateAttuali,
-                foto: fotoBase64,
-                data: new Date().toLocaleString('it-IT')
-            };
-
-            // Recupera vecchie segnalazioni o crea array vuoto
-            let archivio = JSON.parse(localStorage.getItem('segnalazioni')) || [];
-            archivio.unshift(nuovaSegnalazione); // Aggiunge in cima
-            localStorage.setItem('segnalazioni', JSON.stringify(archivio));
-
-            // Reset Form
-            resetForm();
-            // Aggiorna la vista
-            mostraSegnalazioni();
-            alert("Segnalazione salvata con successo nello smartphone!");
-        }
-
-        function resetForm() {
-            document.getElementById('categoria').selectedIndex = 0;
-            document.getElementById('note').value = "";
-            document.getElementById('preview').classList.add('hidden');
-            document.getElementById('upload-placeholder').classList.remove('hidden');
-            document.getElementById('gps-status').innerText = "";
-            document.getElementById('gps-btn-text').innerText = "Rileva Posizione GPS";
-            fotoBase64 = null;
-            coordinateAttuali = null;
-        }
-
-        // Mostra la cronologia delle segnalazioni salvate localmente
-        function mostraSegnalazioni() {
-            const lista = document.getElementById('lista-segnalazioni');
-            const archivio = JSON.parse(localStorage.getItem('segnalazioni')) || [];
-
-            if (archivio.length === 0) {
-                lista.innerHTML = `<p class="text-gray-400 text-sm italic text-center py-4">Nessuna segnalazione presente.</p>`;
-                return;
-            }
-
-            lista.innerHTML = archivio.map(seg => `
-                <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-100 space-y-2 text-sm text-gray-700">
-                    <div class="flex justify-between items-center font-bold text-gray-900">
-                        <span>${seg.categoria}</span>
-                        <span class="text-xs font-normal text-gray-400">${seg.data}</span>
-                    </div>
-                    <img src="${seg.foto}" class="w-full h-32 object-cover rounded-lg">
-                    <p class="font-mono text-xs bg-gray-50 p-2 rounded border text-gray-600">
-                        📍 Lat: ${seg.coords.lat} | Lng: ${seg.coords.lng}
-                    </p>
-                    ${seg.note ? `<p class="italic text-gray-600">"\${seg.note}"</p>` : ''}
-                </div>
-            `).join('');
-        }
-
-        // Carica le segnalazioni all'avvio
-        window.onload = mostraSegnalazioni;
-    </script>
-</body>
-</html>
+                    btnText.innerText = "Rileva GPS";
