@@ -116,7 +116,6 @@
             reader.readAsDataURL(fileCondivisibile);
         }
 
-        // Rilevamento GPS automatico all'avvio
         function ottieniPosizione() {
             const status = document.getElementById('gps-status');
             const btnText = document.getElementById('gps-btn-text');
@@ -145,7 +144,6 @@
                             const localita = addr.city || addr.town || addr.village || addr.municipality || addr.county || "Zona rurale";
                             let strada = addr.road || addr.pedestrian || addr.suburb || "";
 
-                            // Riconoscimento e formattazione Strada Provinciale (es. SP 8)
                             let matchSp = strada.match(/(sp\s*\d+|strada provinciale\s*\d+)/i);
                             if (matchSp) {
                                 strada = matchSp[0].replace(/strada provinciale/gi, 'SP').toUpperCase();
@@ -169,8 +167,8 @@
             );
         }
 
-        // Timbro (Watermark) con Numero, Località, SP, Data e Ora sull'immagine
-        function applicaWatermarkImmagine(imgSrc, linea1, linea2, linea3, callback) {
+        // Timbro (Watermark) posizionato in ALTO sulla foto
+        function applicaWatermarkImmagineInAlto(imgSrc, linea1, linea2, linea3, callback) {
             const img = new Image();
             img.onload = function() {
                 const canvas = document.createElement('canvas');
@@ -184,21 +182,23 @@
 
                 const padding = fontSize * 0.8;
                 const boxHeight = fontSize * 4.2 + padding * 2;
+                
+                // Banda nera semi-trasparente in ALTO (partendo da y = 0)
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
-                ctx.fillRect(0, canvas.height - boxHeight, canvas.width, boxHeight);
+                ctx.fillRect(0, 0, canvas.width, boxHeight);
 
                 // Linea 1 (ID e Categoria)
-                ctx.fillStyle = '#FACC15'; // Giallo evidenziato
-                ctx.fillText(linea1, padding, canvas.height - boxHeight + fontSize + padding * 0.3);
+                ctx.fillStyle = '#FACC15'; 
+                ctx.fillText(linea1, padding, fontSize + padding * 0.8);
                 
                 // Linea 2 (Località e SP)
                 ctx.font = `${Math.floor(fontSize * 0.85)}px Arial`;
                 ctx.fillStyle = '#FFFFFF';
-                ctx.fillText(linea2, padding, canvas.height - boxHeight + fontSize * 2.3 + padding * 0.3);
+                ctx.fillText(linea2, padding, fontSize * 2.3 + padding * 0.8);
 
-                // Linea 3 (Data e Ora)
-                ctx.fillStyle = '#9CA3AF'; // Grigio chiaro
-                ctx.fillText(linea3, padding, canvas.height - boxHeight + fontSize * 3.4 + padding * 0.3);
+                // Linea 3 (Note)
+                ctx.fillStyle = '#9CA3AF'; 
+                ctx.fillText(linea3, padding, fontSize * 3.4 + padding * 0.8);
 
                 callback(canvas.toDataURL('image/jpeg', 0.9));
             };
@@ -214,7 +214,6 @@
             const dataOraAttuale = `${now.toLocaleDateString('it-IT')} ${now.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}`;
             const luogoInfo = coordinateAttuali ? coordinateAttuali.descrizione : `Posizione non rilevata - ${dataOraAttuale}`;
             
-            // Progressivo Unico
             let numeroProgressivo = parseInt(localStorage.getItem('counter_segnalazione') || '0') + 1;
             localStorage.setItem('counter_segnalazione', numeroProgressivo);
             const idFormattato = `#${String(numeroProgressivo).padStart(3, '0')}`;
@@ -223,7 +222,7 @@
             const linea2 = `📍 ${luogoInfo}`;
             const linea3 = `📝 Note: ${note || 'Nessuna'}`;
 
-            applicaWatermarkImmagine(fotoBase64Originale, linea1, linea2, linea3, function(fotoWatermarked) {
+            applicaWatermarkImmagineInAlto(fotoBase64Originale, linea1, linea2, linea3, function(fotoWatermarked) {
                 const nuovaSegnalazione = {
                     id: Date.now(),
                     progressivo: idFormattato,
@@ -246,18 +245,15 @@
                     return;
                 }
 
-                // Conversione della foto in file/blob da condividere senza testo descrittivo aggiuntivo
                 fetch(fotoWatermarked)
                     .then(res => res.blob())
                     .then(blob => {
                         const fileDaCondividere = new File([blob], `segnalazione_${idFormattato}.jpg`, { type: 'image/jpeg' });
 
                         if (canale === 'whatsapp') {
-                            // Su WhatsApp Web/Mobile apriamo la condivisione file nativa se supportata, altrimenti fallback su share o avviso
                             if (navigator.canShare && navigator.canShare({ files: [fileDaCondividere] })) {
                                 navigator.share({ files: [fileDaCondividere] }).catch(() => {});
                             } else {
-                                // Fallback: scarica direttamente la foto sul dispositivo se WhatsApp diretto non accetta file via URL
                                 const a = document.createElement('a');
                                 a.href = URL.createObjectURL(blob);
                                 a.download = `segnalazione_${idFormattato}.jpg`;
@@ -278,7 +274,6 @@
             });
         }
 
-        // Condividi elemento dall'archivio (Invia solo la foto)
         function condividiDaArchivio(id) {
             let archivio = JSON.parse(localStorage.getItem('foto_salvate_v3')) || [];
             let item = archivio.find(s => s.id === id);
