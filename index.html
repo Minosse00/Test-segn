@@ -85,7 +85,10 @@
         <div class="space-y-3">
             <div class="flex justify-between items-center px-1">
                 <h2 class="text-sm font-bold text-gray-400 tracking-wider uppercase">Archivio sul Dispositivo</h2>
-                <button onclick="svuotaArchivio()" class="text-xs text-red-400 hover:text-red-300 underline">Elimina Tutti</button>
+                <div class="flex gap-3">
+                    <button onclick="resettaContatore()" class="text-xs text-yellow-400 hover:text-yellow-300 underline font-semibold">Azzera Conteggio</button>
+                    <button onclick="svuotaArchivio()" class="text-xs text-red-400 hover:text-red-300 underline">Elimina Tutti</button>
+                </div>
             </div>
             <div id="lista-segnalazioni" class="space-y-3"></div>
         </div>
@@ -96,6 +99,18 @@
         let fotoBase64Originale = null;
         let fileCondivisibile = null;
         let dirHandle = null;
+
+        function dataURLtoBlob(dataurl) {
+            const arr = dataurl.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new Blob([u8arr], { type: mime });
+        }
 
         function aggiornaStatoRete() {
             const bar = document.getElementById('status-rete');
@@ -258,7 +273,9 @@
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = filename;
+            document.body.appendChild(a);
             a.click();
+            document.body.removeChild(a);
             alert(`Foto scaricata: salvataggio completato come ${filename}`);
         }
 
@@ -287,22 +304,19 @@
                 localStorage.setItem('foto_salvate_v3', JSON.stringify(archivio));
                 mostraSegnalazioni();
 
-                fetch(fotoWatermarked)
-                    .then(res => res.blob())
-                    .then(blob => {
-                        const filename = `FotoApp_segnalazione_${idFormattato.replace('#','')}.jpg`;
-                        const fileDaCondividere = new File([blob], filename, { type: 'image/jpeg' });
+                const blob = dataURLtoBlob(fotoWatermarked);
+                const filename = `FotoApp_segnalazione_${idFormattato.replace('#','')}.jpg`;
+                const fileDaCondividere = new File([blob], filename, { type: 'image/jpeg' });
 
-                        if (canale === 'salva_locale') {
-                            salvataggioInCartellaDispositivo(blob, filename);
-                        } else if (canale === 'whatsapp' || canale === 'share') {
-                            if (navigator.share && navigator.canShare({ files: [fileDaCondividere] })) {
-                                navigator.share({ files: [fileDaCondividere] }).catch(() => {});
-                            } else {
-                                salvataggioInCartellaDispositivo(blob, filename);
-                            }
-                        }
-                    });
+                if (canale === 'salva_locale') {
+                    salvataggioInCartellaDispositivo(blob, filename);
+                } else if (canale === 'whatsapp' || canale === 'share') {
+                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [fileDaCondividere] })) {
+                        navigator.share({ files: [fileDaCondividere] }).catch(() => {});
+                    } else {
+                        salvataggioInCartellaDispositivo(blob, filename);
+                    }
+                }
 
                 resetForm();
             });
@@ -313,19 +327,27 @@
             let item = archivio.find(s => s.id === id);
             if (!item) return;
 
-            fetch(item.foto)
-                .then(res => res.blob())
-                .then(blob => {
-                    const fileDaCondividere = new File([blob], `FotoApp_segnalazione_${item.progressivo.replace('#','')}.jpg`, { type: 'image/jpeg' });
-                    if (navigator.share && navigator.canShare({ files: [fileDaCondividere] })) {
-                        navigator.share({ files: [fileDaCondividere] }).catch(err => console.log(err));
-                    } else {
-                        const a = document.createElement('a');
-                        a.href = URL.createObjectURL(blob);
-                        a.download = fileDaCondividere.name;
-                        a.click();
-                    }
-                });
+            const filename = `FotoApp_segnalazione_${item.progressivo.replace('#','')}.jpg`;
+            const blob = dataURLtoBlob(item.foto);
+            const fileDaCondividere = new File([blob], filename, { type: 'image/jpeg' });
+
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [fileDaCondividere] })) {
+                navigator.share({ files: [fileDaCondividere] }).catch(err => console.log(err));
+            } else {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        }
+
+        function resettaContatore() {
+            if (confirm("Vuoi azzerare il contatore delle foto (ripartendo da #001 per la prossima segnalazione)?")) {
+                localStorage.setItem('counter_segnalazione', '0');
+                alert("Contatore azzerato! La prossima segnalazione partirà da #001.");
+            }
         }
 
         function eliminaSegnalazione(id) {
