@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Segnalazioni Rapide GPS</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>#camera-input { display: none; }</style>
+    <style>.hidden-input { display: none; }</style>
 </head>
 <body class="bg-gray-900 font-sans antialiased pb-10 text-white" onload="ottieniPosizione()">
 
@@ -18,15 +18,25 @@
         <!-- AREA FOTOCAMERA / GALLERIA -->
         <div class="bg-gray-800 rounded-2xl p-4 shadow-xl border border-gray-700 space-y-4">
             
-            <div class="flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-xl overflow-hidden bg-gray-950 cursor-pointer aspect-video relative" onclick="document.getElementById('camera-input').click()">
-                <!-- Rimosso capture="environment" per permettere la scelta da Galleria o Scatto -->
-                <input type="file" accept="image/*" id="camera-input" onchange="previewImage(event)">
+            <div class="flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-xl overflow-hidden bg-gray-950 aspect-video relative">
+                <!-- Input per Scatto Diretto con Fotocamera -->
+                <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden-input" onchange="previewImage(event)">
+                <!-- Input per Selezione da Galleria/File -->
+                <input type="file" accept="image/*" id="gallery-input" class="hidden-input" onchange="previewImage(event)">
                 
-                <div id="upload-placeholder" class="text-center p-4">
-                    <span class="text-5xl block">📸 / 🖼️</span>
-                    <p class="text-sm text-gray-400 mt-2 font-bold uppercase tracking-wider">Scatta foto o Scegli da Galleria</p>
+                <div id="upload-placeholder" class="text-center p-4 w-full">
+                    <p class="text-xs text-gray-400 mb-3 font-bold uppercase tracking-wider">Scegli come inserire la foto</p>
+                    <div class="flex gap-2 justify-center">
+                        <button type="button" onclick="document.getElementById('camera-input').click()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center gap-1.5 shadow-md">
+                            📸 Fotocamera
+                        </button>
+                        <button type="button" onclick="document.getElementById('gallery-input').click()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center gap-1.5 border border-gray-600 shadow-md">
+                            🖼️ Galleria
+                        </button>
+                    </div>
                 </div>
-                <img id="preview" class="hidden absolute inset-0 w-full h-full object-cover" alt="Anteprima">
+                
+                <img id="preview" class="hidden absolute inset-0 w-full h-full object-cover cursor-pointer" alt="Anteprima" onclick="document.getElementById('camera-input').click()">
             </div>
 
             <!-- Dettagli Segnalazione -->
@@ -161,7 +171,6 @@
             );
         }
 
-        // Timbro in Stile "GPS Map Camera" posizionato in BASSO (simile al layout di riferimento)
         function applicaWatermarkGPSMapCamera(imgSrc, idSegnalazione, categoria, noteText, callback) {
             const img = new Image();
             img.onload = function() {
@@ -171,16 +180,13 @@
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(img, 0, 0);
 
-                // Dimensioni proporzionali alla risoluzione della foto
                 const cardHeight = Math.floor(canvas.height * 0.22);
                 const cardY = canvas.height - cardHeight;
                 const padding = Math.floor(cardHeight * 0.08);
 
-                // Sfondo Carta Scuro semi-trasparente
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.fillRect(0, cardY, canvas.width, cardHeight);
 
-                // Riquadro Mappa / Icona GPS a Sinistra
                 const mapWidth = Math.floor(cardHeight * 0.85);
                 const mapHeight = Math.floor(cardHeight * 0.84);
                 const mapX = padding;
@@ -192,41 +198,34 @@
                 ctx.lineWidth = 3;
                 ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
 
-                // Disegno Mappa / Icona Pin al centro del riquadro sinistro
                 ctx.font = `${Math.floor(mapHeight * 0.4)}px sans-serif`;
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
                 ctx.fillText('📍', mapX + (mapWidth / 2), mapY + (mapHeight / 2));
 
-                // Testi Informazioni a Destra
                 ctx.textAlign = 'left';
                 ctx.textBaseline = 'top';
                 const textX = mapX + mapWidth + padding;
                 let currentY = mapY;
                 const lineSpacing = Math.floor(cardHeight * 0.14);
 
-                // Linea 1: Città / Stato (Giallo/Azzurro)
                 ctx.font = `bold ${Math.floor(cardHeight * 0.12)}px Arial`;
                 ctx.fillStyle = '#60a5fa';
                 ctx.fillText(coordinateAttuali.citta.toUpperCase(), textX, currentY);
 
-                // Linea 2: Indirizzo
                 currentY += lineSpacing;
                 ctx.font = `${Math.floor(cardHeight * 0.10)}px Arial`;
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText(coordinateAttuali.indirizzo, textX, currentY);
 
-                // Linea 3: Coordinate GPS Lat / Long
                 currentY += lineSpacing;
                 ctx.fillStyle = '#cbd5e1';
                 ctx.fillText(`Lat: ${coordinateAttuali.lat} | Long: ${coordinateAttuali.lng}`, textX, currentY);
 
-                // Linea 4: Data, Ora e Categoria
                 currentY += lineSpacing;
                 ctx.fillStyle = '#facc15';
                 ctx.fillText(`${coordinateAttuali.dataOra} - ${idSegnalazione} ${categoria}`, textX, currentY);
 
-                // Linea 5: Note
                 if (noteText) {
                     currentY += lineSpacing;
                     ctx.fillStyle = '#9ca3af';
@@ -239,7 +238,6 @@
         }
 
         async function salvataggioInCartellaDispositivo(blob, filename) {
-            // Utilizzo File System Access API (Browser desktop/Chrome Android compatibili)
             if ('showDirectoryPicker' in window) {
                 try {
                     if (!dirHandle) {
@@ -253,11 +251,10 @@
                     alert(`Immagine salvata con successo nella cartella selezionata come:\n${filename}`);
                     return;
                 } catch (err) {
-                    console.log("Scelta cartella annullata o non supportata, fallback al download.");
+                    console.log("Scelta cartella annullata o non supportata.");
                 }
             }
 
-            // Fallback: Download diretto con nome file standard
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = filename;
