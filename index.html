@@ -12,33 +12,26 @@
     <meta name="apple-mobile-web-app-title" content="GPS Camera">
     <meta name="theme-color" content="#030712">
 
-    <!-- Icona PWA personalizzata -->
+    <!-- Web App Manifest Staticamente Integrato per consentire l'installazione su Chrome -->
+    <link rel="manifest" href='data:application/manifest+json,{
+        "name": "GPS Map Camera SP",
+        "short_name": "GPS Camera",
+        "start_url": "./index.html",
+        "display": "standalone",
+        "background_color": "%23030712",
+        "theme_color": "%23030712",
+        "icons": [
+            {
+                "src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+                "sizes": "512x512",
+                "type": "image/jpeg"
+            }
+        ]
+    }'>
+
+    <!-- Icona App -->
     <link rel="icon" type="image/jpeg" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=">
     <link rel="apple-touch-icon" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=">
-
-    <!-- Web App Manifest incorporato -->
-    <script>
-        const manifest = {
-            "name": "GPS Map Camera SP",
-            "short_name": "GPS Camera",
-            "start_url": window.location.href,
-            "display": "standalone",
-            "background_color": "#030712",
-            "theme_color": "#030712",
-            "icons": [
-                {
-                    "src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
-                    "sizes": "512x512",
-                    "type": "image/jpeg"
-                }
-            ]
-        };
-        const blob = new Blob([JSON.stringify(manifest)], { type: 'application/json' });
-        const link = document.createElement('link');
-        link.rel = 'manifest';
-        link.href = URL.createObjectURL(blob);
-        document.head.appendChild(link);
-    </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -175,13 +168,13 @@
 
     <!-- SCRIPT APPLICATIVO -->
     <script>
-        // Service Worker ottimizzato per offline condizionale
+        // Service Worker condizionale offline
         if ('serviceWorker' in navigator) {
             const swCode = `
                 self.addEventListener('install', (e) => { self.skipWaiting(); });
                 self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
                 self.addEventListener('fetch', (e) => {
-                    if (e.request.url.includes('openstreetmap') || e.request.url.includes('tailwindcss') || e.request.url.includes('font-awesome')) return;
+                    if (e.request.url.includes('tailwindcss') || e.request.url.includes('font-awesome')) return;
                     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
                 });
             `;
@@ -189,12 +182,12 @@
         }
 
         let stream = null;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v4') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v4') || '0');
+        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v5') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v5') || '0');
         let isSelectionMode = false;
         let selectedPhotoIds = new Set();
         let currentActivePhotoId = null;
-        let currentGPS = { lat: 0, lon: 0, address: "GPS in acquisizione..." };
+        let currentGPS = { lat: 0, lon: 0 };
 
         const videoElem = document.getElementById('camera-feed');
         const canvasElem = document.getElementById('photo-canvas');
@@ -235,21 +228,20 @@
             }
         }
 
-        // Geolocalizzazione nativa rapida e affidabile
         function initGPS() {
             if (!navigator.geolocation) {
-                locationLabel.textContent = "GPS non supportato dal browser";
+                locationLabel.textContent = "GPS non supportato";
                 return;
             }
             navigator.geolocation.watchPosition((position) => {
                 currentGPS.lat = position.coords.latitude;
                 currentGPS.lon = position.coords.longitude;
-                currentGPS.address = `Lat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)}`;
+                const coordStr = `Lat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)}`;
                 
                 spLabel.textContent = "GPS Connesso";
-                locationLabel.textContent = currentGPS.address;
-                overlayCoords.textContent = currentGPS.address;
-                overlayAddr.textContent = "Posizione rilevata da GPS";
+                locationLabel.textContent = coordStr;
+                overlayCoords.textContent = coordStr;
+                overlayAddr.textContent = "Posizione rilevata";
             }, (error) => {
                 locationLabel.textContent = "Segnale GPS assente o permessi negati";
                 overlayAddr.textContent = "Attivare geolocalizzazione";
@@ -276,7 +268,7 @@
         document.getElementById('btn-reset-counter').addEventListener('click', () => {
             if (confirm("Azzerare la numerazione delle foto?")) {
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_pwa_v4', 0);
+                localStorage.setItem('gps_photos_counter_pwa_v5', 0);
                 updatePreviewUI();
             }
         });
@@ -364,8 +356,8 @@
             };
 
             photos.unshift(photoObj);
-            localStorage.setItem('gps_photos_pwa_v4', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_pwa_v4', photoCounter);
+            localStorage.setItem('gps_photos_pwa_v5', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_pwa_v5', photoCounter);
             updatePreviewUI();
 
             videoElem.classList.add('opacity-40');
@@ -382,7 +374,7 @@
                 previewThumb.classList.add('hidden');
                 previewPlaceholder.classList.remove('hidden');
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_pwa_v4', 0);
+                localStorage.setItem('gps_photos_counter_pwa_v5', 0);
                 photoCounterBadge.textContent = 0;
             }
         }
@@ -455,6 +447,7 @@
             singlePhotoModal.classList.add('hidden');
         });
 
+        // Condivisione pulita (solo file immagine senza testo forzato)
         document.getElementById('btn-single-share').addEventListener('click', async () => {
             const photo = photos.find(p => p.id === currentActivePhotoId);
             if (!photo) return;
@@ -476,9 +469,9 @@
                 photos = photos.filter(p => p.id !== currentActivePhotoId);
                 if (photos.length === 0) {
                     photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_pwa_v4', 0);
+                    localStorage.setItem('gps_photos_counter_pwa_v5', 0);
                 }
-                localStorage.setItem('gps_photos_pwa_v4', JSON.stringify(photos));
+                localStorage.setItem('gps_photos_pwa_v5', JSON.stringify(photos));
                 singlePhotoModal.classList.add('hidden');
                 renderGallery();
                 updatePreviewUI();
@@ -524,9 +517,9 @@
                 photos = photos.filter(p => !selectedPhotoIds.has(p.id));
                 if (photos.length === 0) {
                     photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_pwa_v4', 0);
+                    localStorage.setItem('gps_photos_counter_pwa_v5', 0);
                 }
-                localStorage.setItem('gps_photos_pwa_v4', JSON.stringify(photos));
+                localStorage.setItem('gps_photos_pwa_v5', JSON.stringify(photos));
                 exitSelectionMode();
                 renderGallery();
                 updatePreviewUI();
