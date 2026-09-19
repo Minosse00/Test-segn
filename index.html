@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Map Camera - Segnalazioni</title>
+    <title>GPS Map Camera - Scatto Diretto</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>.hidden-input { display: none; }</style>
 </head>
-<body class="bg-gray-900 font-sans antialiased pb-10 text-white" onload="inizializzaApp()">
+<body class="bg-gray-900 font-sans antialiased pb-10 text-white" onload="ottieniPosizione()">
 
     <div id="status-rete" class="bg-green-600 text-white text-xs font-bold text-center py-1 transition-all">
         Connesso a Internet
@@ -84,59 +84,19 @@
             
             <p id="gps-status" class="text-[11px] text-gray-300 font-mono text-center truncate bg-gray-900 p-2 rounded border border-gray-700">Rilevamento GPS automatico...</p>
 
-            <!-- PULSANTE SALVATAGGIO MAPCAMERA -->
+            <!-- PULSANTE SALVATAGGIO AUTOMATICO SUL DISPOSITIVO -->
             <div class="pt-2">
-                <button onclick="salvaFotoMapCamera()" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-center shadow-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2">
-                    💾 Salva in MapCamera
+                <button onclick="salvaFotoSulDispositivo()" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-center shadow-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2">
+                    💾 Salva Subito sul Dispositivo
                 </button>
             </div>
         </div>
 
-        <!-- STORICO LOCALE & GESTIONE SELEZIONE -->
-        <div class="space-y-3">
-            <div class="flex justify-between items-center px-1">
-                <h2 class="text-sm font-bold text-gray-400 tracking-wider uppercase">Archivio MapCamera</h2>
-                <div class="space-x-2 text-xs">
-                    <button onclick="resetContatore()" class="text-yellow-400 hover:text-yellow-300 underline" title="Resetta numerazione progressiva">Reset Num.</button>
-                    <button onclick="svuotaArchivio()" class="text-red-400 hover:text-red-300 underline">Elimina Tutti</button>
-                </div>
-            </div>
-
-            <!-- BARRA AZIONI MULTIPLE -->
-            <div class="bg-gray-800 p-2.5 rounded-xl border border-gray-700 flex items-center justify-between text-xs">
-                <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-300">
-                    <input type="checkbox" id="seleziona-tutti" onchange="toggleSelezionaTutti(this)" class="w-4 h-4 accent-blue-600 rounded">
-                    Seleziona Tutti
-                </label>
-                <button onclick="condividiSelezionate()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow">
-                    📤 Invia Selezionate (<span id="count-selezionati">0</span>)
-                </button>
-            </div>
-
-            <div id="lista-segnalazioni" class="space-y-3"></div>
-        </div>
     </main>
 
     <script>
         let coordinateAttuali = { lat: "0.000000", lng: "0.000000", citta: "Sconosciuta", indirizzo: "Posizione non rilevata", dataOra: "" };
         let fileSelezionato = null;
-        let cartellaHandleMapCamera = null;
-
-        function inizializzaApp() {
-            ottieniPosizione();
-            richiediCartellaMapCamera();
-        }
-
-        async function richiediCartellaMapCamera() {
-            if ('showDirectoryPicker' in window) {
-                try {
-                    // Tenta di agganciarsi o richiedere la cartella dedicata
-                    cartellaHandleMapCamera = await window.showDirectoryPicker({ id: 'mapcamera_folder', mode: 'readwrite' });
-                } catch (e) {
-                    console.log("Accesso alla cartella dedicato non concesso o non supportato in automatico al bootstrap.");
-                }
-            }
-        }
 
         function dataURLtoBlob(dataurl) {
             const arr = dataurl.split(',');
@@ -308,7 +268,13 @@
                     ctx.fillStyle = '#facc15';
                     const categoria = document.getElementById('categoria').value;
                     const noteText = document.getElementById('note').value;
-                    let idFormattato = document.getElementById('temp-id-progressivo').value;
+                    
+                    // Gestione numero progressivo temporaneo basato su timestamp o sessione
+                    let timestampKey = 'temp_counter_gps';
+                    let num = parseInt(sessionStorage.getItem(timestampKey) || '0') + 1;
+                    sessionStorage.setItem(timestampKey, num);
+                    let idFormattato = `#${String(num).padStart(3, '0')}`;
+
                     ctx.fillText(`${coordinateAttuali.dataOra} - ${idFormattato} ${categoria}`, textX, currentY);
 
                     if (noteText) {
@@ -317,191 +283,34 @@
                         ctx.fillText(`Note: ${noteText}`, textX, currentY);
                     }
 
-                    callback(canvas.toDataURL('image/jpeg', 0.90));
+                    // Generazione nome file pulito
+                    const filename = `GPS_Photo_${Date.now()}.jpg`;
+                    callback(canvas.toDataURL('image/jpeg', 0.90), filename);
                 };
                 img.src = e.target.result;
             };
             reader.readAsDataURL(file);
         }
 
-        async function salvaFileLocale(blob, filename) {
-            // Tenta di usare la cartella MapCamera se supportata dal browser (es. PC/Android moderni)
-            if ('showDirectoryPicker' in window) {
-                try {
-                    if (!cartellaHandleMapCamera) {
-                        cartellaHandleMapCamera = await window.showDirectoryPicker({ id: 'mapcamera_folder', mode: 'readwrite' });
-                    }
-                    // Crea cartella MapCamera virtuale o usa quella selezionata
-                    const subDir = await cartellaHandleMapCamera.getDirectoryHandle('MapCamera', { create: true });
-                    const newFileHandle = await subDir.getFileHandle(filename, { create: true });
-                    const writable = await newFileHandle.createWritable();
-                    await writable.write(blob);
-                    await writable.close();
-                    return true;
-                } catch (err) {
-                    console.log("Selettore cartella non completato, fallback su download diretto.");
-                }
-            }
-
-            // Metodo standard universale (iPhone Safari / Android)
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            return false;
-        }
-
-        async function salvaFotoMapCamera() {
+        function salvaFotoSulDispositivo() {
             if (!fileSelezionato) { alert("Scatta prima una foto!"); return; }
-
-            let numeroProgressivo = parseInt(localStorage.getItem('counter_mapcamera') || '0') + 1;
-            localStorage.setItem('counter_mapcamera', numeroProgressivo);
-            const idFormattato = `#${String(numeroProgressivo).padStart(3, '0')}`;
-
-            let tempInput = document.getElementById('temp-id-progressivo');
-            if(!tempInput) {
-                tempInput = document.createElement('input');
-                tempInput.type = 'hidden';
-                tempInput.id = 'temp-id-progressivo';
-                document.body.appendChild(tempInput);
-            }
-            tempInput.value = idFormattato;
 
             const risoluzioneScelta = document.getElementById('risoluzione').value;
 
-            elaboraERidimensionaImmagine(fileSelezionato, risoluzioneScelta, async function(fotoWatermarked) {
+            elaboraERidimensionaImmagine(fileSelezionato, risoluzioneScelta, function(fotoWatermarked, filename) {
                 const blob = dataURLtoBlob(fotoWatermarked);
-                const filename = `MapCamera_${idFormattato.replace('#','')}.jpg`;
+                
+                // Download diretto sul dispositivo (Compatibile Android e iPhone)
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
 
-                await salvaFileLocale(blob, filename);
-
-                const nuovaSegnalazione = {
-                    id: Date.now(),
-                    progressivo: idFormattato,
-                    categoria: document.getElementById('categoria').value,
-                    note: document.getElementById('note').value,
-                    luogo: `${coordinateAttuali.citta} - ${coordinateAttuali.indirizzo}`,
-                    foto: fotoWatermarked,
-                    data: coordinateAttuali.dataOra,
-                    filename: filename
-                };
-
-                let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-                archivio.unshift(nuovaSegnalazione);
-                localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
-                mostraSegnalazioni();
                 resetForm();
-                alert("Foto salvata in MapCamera con successo!");
+                alert("Foto elaborata e salvata sul dispositivo!");
             });
-        }
-
-        async function salvaSingolaInMapCamera(id) {
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            let item = archivio.find(s => s.id === id);
-            if (!item) return;
-
-            const blob = dataURLtoBlob(item.foto);
-            await salvaFileLocale(blob, item.filename);
-            alert("Salvata in MapCamera!");
-        }
-
-        async function condividiSingola(id) {
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            let item = archivio.find(s => s.id === id);
-            if (!item) return;
-
-            const blob = dataURLtoBlob(item.foto);
-            const file = new File([blob], item.filename, { type: 'image/jpeg' });
-
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({
-                        title: `Segnalazione ${item.progressivo}`,
-                        text: `${item.categoria} - ${item.luogo} (${item.data})`,
-                        files: [file]
-                    });
-                } catch (err) {
-                    console.log("Condivisione annullata");
-                }
-            } else {
-                // Fallback se il browser non supporta la condivisione file diretta
-                salvaSingolaInMapCamera(id);
-            }
-        }
-
-        async function condividiSelezionate() {
-            const checkboxes = document.querySelectorAll('.seleziona-item:checked');
-            if (checkboxes.length === 0) {
-                alert("Seleziona almeno una foto dall'archivio.");
-                return;
-            }
-
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            let filesArray = [];
-
-            checkboxes.forEach(cb => {
-                let id = parseInt(cb.getAttribute('data-id'));
-                let item = archivio.find(s => s.id === id);
-                if (item) {
-                    const blob = dataURLtoBlob(item.foto);
-                    filesArray.push(new File([blob], item.filename, { type: 'image/jpeg' }));
-                }
-            });
-
-            if (navigator.canShare && navigator.canShare({ files: filesArray })) {
-                try {
-                    await navigator.share({
-                        title: 'Segnalazioni MapCamera',
-                        text: `Invio di n. ${filesArray.length} foto segnalazioni GPS Map Camera.`,
-                        files: filesArray
-                    });
-                } catch (err) {
-                    console.log("Condivisione multipla annullata");
-                }
-            } else {
-                alert("Il tuo browser non supporta l'invio multiplo diretto tramite condivisione. Verranno scaricate singolarmente.");
-                filesArray.forEach(file => {
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(file);
-                    a.download = file.name;
-                    a.click();
-                });
-            }
-        }
-
-        function toggleSelezionaTutti(master) {
-            const checkboxes = document.querySelectorAll('.seleziona-item');
-            checkboxes.forEach(cb => cb.checked = master.checked);
-            aggiornaContatoreSelezionati();
-        }
-
-        function aggiornaContatoreSelezionati() {
-            const count = document.querySelectorAll('.seleziona-item:checked').length;
-            document.getElementById('count-selezionati').innerText = count;
-        }
-
-        function eliminaSegnalazione(id) {
-            if (!confirm("Vuoi eliminare questa foto dall'archivio?")) return;
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            archivio = archivio.filter(s => s.id !== id);
-            localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
-            mostraSegnalazioni();
-        }
-
-        function svuotaArchivio() {
-            if (!confirm("Vuoi svuotare tutto l'archivio MapCamera?")) return;
-            localStorage.removeItem('archivio_mapcamera');
-            mostraSegnalazioni();
-        }
-
-        function resetContatore() {
-            let nuovoVal = prompt("Inserisci il numero da cui ripartire con i progressivi (es. 0):", "0");
-            if (nuovoVal !== null && !isNaN(nuovoVal)) {
-                localStorage.setItem('counter_mapcamera', parseInt(nuovoVal));
-                alert(`Contatore reimpostato. La prossima foto sarà #${String(parseInt(nuovoVal) + 1).padStart(3, '0')}`);
-            }
         }
 
         function resetForm() {
@@ -509,52 +318,6 @@
             document.getElementById('preview-container').classList.add('hidden');
             document.getElementById('upload-placeholder').classList.remove('hidden');
             fileSelezionato = null;
-        }
-
-        function mostraSegnalazioni() {
-            const lista = document.getElementById('lista-segnalazioni');
-            if (!lista) return;
-            const archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            
-            document.getElementById('seleziona-tutti').checked = false;
-            document.getElementById('count-selezionati').innerText = "0";
-
-            lista.innerHTML = "";
-            if (archivio.length === 0) {
-                lista.innerHTML = `<p class="text-xs text-gray-500 text-center py-4 bg-gray-800 rounded-xl border border-gray-800">Nessuna foto salvata</p>`;
-                return;
-            }
-
-            archivio.forEach(item => {
-                const div = document.createElement('div');
-                div.className = "bg-gray-800 p-3 rounded-xl border border-gray-700 flex items-center gap-3";
-                div.innerHTML = `
-                    <div class="flex items-center flex-shrink-0">
-                        <input type="checkbox" data-id="${item.id}" onchange="aggiornaContatoreSelezionati()" class="seleziona-item w-4 h-4 accent-blue-600 rounded">
-                    </div>
-                    <img src="${item.foto}" class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border border-gray-600">
-                    <div class="text-xs space-y-1 overflow-hidden w-full">
-                        <div class="flex justify-between items-center">
-                            <span class="font-bold text-yellow-400">${item.progressivo} - ${item.categoria}</span>
-                            <span class="text-gray-400 text-[10px]">${item.data}</span>
-                        </div>
-                        <p class="text-blue-300 truncate">📍 ${item.luogo || 'Posizione non specificata'}</p>
-                        <p class="text-gray-400 truncate">Note: ${item.note || 'Nessuna'}</p>
-                        <div class="flex gap-1.5 pt-1 justify-end">
-                            <button onclick="condividiSingola(${item.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
-                                📤 Condividi
-                            </button>
-                            <button onclick="salvaSingolaInMapCamera(${item.id})" class="bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
-                                💾 Salva
-                            </button>
-                            <button onclick="eliminaSegnalazione(${item.id})" class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
-                                🗑️ Elimina
-                            </button>
-                        </div>
-                    </div>
-                `;
-                lista.appendChild(div);
-            });
         }
     </script>
 </body>
