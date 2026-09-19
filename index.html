@@ -11,7 +11,6 @@
     <meta name="apple-mobile-web-app-title" content="GPS Camera">
     <meta name="theme-color" content="#030712">
 
-    <!-- Richiamo al Manifest separato -->
     <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/jpeg" href="map.jpg">
     <link rel="apple-touch-icon" href="map.jpg">
@@ -56,7 +55,7 @@
         <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
             <div id="overlay-box" class="bg-black/65 backdrop-blur-md p-2 rounded-lg border border-white/15 max-w-[280px] text-[10px] space-y-0.5 shadow-lg">
                 <div class="font-bold text-amber-300 truncate" id="overlay-category">Taglio erba</div>
-                <div class="text-gray-100 truncate font-semibold text-green-400" id="overlay-addr">Posizione: In attesa...</div>
+                <div class="text-gray-100 truncate font-semibold" id="overlay-addr">Posizione: In attesa...</div>
                 <div class="text-gray-300 text-[9px]" id="overlay-coords">Lat: 0.0000, Lon: 0.0000</div>
             </div>
         </div>
@@ -166,9 +165,11 @@
         });
 
         let stream = null;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v6') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v6') || '0');
+        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v7') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v7') || '0');
         let currentGPS = { lat: 0, lon: 0 };
+        let currentAddressString = "Ricerca indirizzo...";
+        let lastGeocodeTime = 0;
         let isSelectionMode = false;
         let selectedPhotoIds = new Set();
         let currentActivePhotoId = null;
@@ -198,7 +199,7 @@
 
         function initGPS() {
             if (navigator.geolocation) {
-                navigator.geolocation.watchPosition((position) => {
+                navigator.geolocation.watchPosition(async (position) => {
                     currentGPS.lat = position.coords.latitude;
                     currentGPS.lon = position.coords.longitude;
                     const coordStr = `Lat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)}`;
@@ -207,9 +208,39 @@
                     locationLabel.textContent = coordStr;
                     overlayCoords.textContent = coordStr;
                     
-                    // Aggiorna il testo dell'attesa non appena riceve un segnale
-                    overlayAddr.textContent = "Coordinate acquisite";
-                    overlayAddr.classList.remove("text-gray-100");
+                    // Reverse Geocoding via Nominatim (Max 1 richiesta ogni 10 secondi per limitare le chiamate API gratuite)
+                    const now = Date.now();
+                    if (now - lastGeocodeTime > 10000) {
+                        lastGeocodeTime = now;
+                        try {
+                            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentGPS.lat}&lon=${currentGPS.lon}&zoom=18&addressdetails=1`);
+                            const data = await response.json();
+                            
+                            if (data && data.address) {
+                                let road = data.address.road || "";
+                                let city = data.address.city || data.address.town || data.address.village || "";
+                                let spFound = false;
+
+                                // Implementazione della dicitura SP
+                                if (road.toUpperCase().includes("SP") || road.toUpperCase().includes("STRADA PROVINCIALE")) {
+                                    spFound = true;
+                                }
+
+                                currentAddressString = `${road}${road && city ? ', ' : ''}${city}`;
+                                
+                                // Se è una Strada Provinciale, aggiungiamo un badge visivo nell'intestazione
+                                if (spFound) {
+                                    spLabel.innerHTML = `GPS Connesso <span class="bg-amber-500 text-black px-1 py-0.5 rounded text-[9px] ml-1">SP</span>`;
+                                } else {
+                                    spLabel.textContent = "GPS Connesso";
+                                }
+
+                                overlayAddr.textContent = currentAddressString;
+                            }
+                        } catch (error) {
+                            console.error("Errore Geocoding:", error);
+                        }
+                    }
                     
                 }, null, { enableHighAccuracy: true });
             }
@@ -227,40 +258,53 @@
             ctx.fillRect(0, panelY, 15, panelH);
 
             const mapImg = new Image();
-            mapImg.crossOrigin = "anonymous"; 
-            mapImg.src = `https://staticmap.openstreetmap.de/staticmap.php?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=160x160&maptype=mapnik&markers=${currentGPS.lat},${currentGPS.lon},red-pushpin`;
+            mapImg.crossOrigin = "anonymous"; // Importante per non avere errori CORS sulla miniatura
+            mapImg.src = `https://staticmap.openstreetmap.de/staticmap.php?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=200x200&maptype=mapnik&markers=${currentGPS.lat},${currentGPS.lon},red-pushpin`;
 
             mapImg.onload = () => finishDrawingMap(mapImg);
-            mapImg.onerror = () => finishDrawingMap(null);
+            mapImg.onerror = () => {
+                // Fallback in caso l'API mappa fallisca
+                const fallbackCanvas = document.createElement("canvas");
+                fallbackCanvas.width = 200; fallbackCanvas.height = 200;
+                const fctx = fallbackCanvas.getContext("2d");
+                fctx.fillStyle = "#333"; fctx.fillRect(0, 0, 200, 200);
+                fctx.fillStyle = "#fff"; fctx.font = "20px Arial"; fctx.fillText("Mappa N/D", 50, 100);
+                finishDrawingMap(fallbackCanvas);
+            };
 
             function finishDrawingMap(img) {
                 const mapSize = panelH * 0.8; 
                 const mapX = 30;
                 const mapY = panelY + (panelH - mapSize) / 2;
 
-                if (img) {
-                    ctx.drawImage(img, mapX, mapY, mapSize, mapSize);
-                    ctx.strokeStyle = "white";
-                    ctx.lineWidth = 4;
-                    ctx.strokeRect(mapX, mapY, mapSize, mapSize);
-                }
+                ctx.drawImage(img, mapX, mapY, mapSize, mapSize);
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 4;
+                ctx.strokeRect(mapX, mapY, mapSize, mapSize);
 
                 const textX = mapX + mapSize + 25;
-                const baseFontSize = Math.max(14, canvas.width * 0.025);
+                const baseFontSize = Math.max(14, canvas.width * 0.023);
                 const now = new Date();
                 
+                // Disegna Indirizzo
                 ctx.fillStyle = "white";
-                ctx.font = `bold ${baseFontSize * 1.2}px sans-serif`;
-                ctx.fillText(`Coordinate Geografiche:`, textX, mapY + (mapSize * 0.25));
+                ctx.font = `bold ${baseFontSize * 1.3}px sans-serif`;
+                ctx.fillText(currentAddressString, textX, mapY + (mapSize * 0.25));
                 
+                // Disegna Coordinate
                 ctx.font = `${baseFontSize}px sans-serif`;
                 ctx.fillStyle = "#e2e8f0";
-                ctx.fillText(`Lat: ${currentGPS.lat.toFixed(6)}`, textX, mapY + (mapSize * 0.50));
-                ctx.fillText(`Lon: ${currentGPS.lon.toFixed(6)}`, textX, mapY + (mapSize * 0.70));
+                ctx.fillText(`Lat: ${currentGPS.lat.toFixed(6)} | Lon: ${currentGPS.lon.toFixed(6)}`, textX, mapY + (mapSize * 0.50));
                 
+                // Disegna Data e Ora
                 ctx.fillStyle = "#fbbf24";
                 ctx.font = `bold ${baseFontSize * 0.9}px sans-serif`;
-                ctx.fillText(`Data: ${now.toLocaleDateString()} Ora: ${now.toLocaleTimeString()}`, textX, mapY + (mapSize * 0.95));
+                ctx.fillText(`Data: ${now.toLocaleDateString()}  Ora: ${now.toLocaleTimeString()}`, textX, mapY + (mapSize * 0.75));
+                
+                // Disegna Categoria e ID Foto
+                ctx.fillStyle = "#94a3b8";
+                ctx.font = `bold ${baseFontSize * 0.9}px sans-serif`;
+                ctx.fillText(`Categoria: ${categorySelect.value}  |  Foto Riferimento: #${photoCounter + 1}`, textX, mapY + (mapSize * 0.95));
                 
                 callback();
             }
@@ -278,18 +322,18 @@
                 dateStr: now.toLocaleDateString(),
                 timestamp: now.toISOString(),
                 data: dataUrl,
-                info: `Lat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)} - ${categorySelect.value}`
+                info: `${currentAddressString} (Lat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)})`
             });
             
-            localStorage.setItem('gps_photos_pwa_v6', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_pwa_v6', photoCounter);
+            localStorage.setItem('gps_photos_pwa_v7', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_pwa_v7', photoCounter);
             updatePreviewUI();
         }
 
         document.getElementById('btn-capture').addEventListener('click', () => {
             const canvas = canvasElem;
-            canvas.width = videoElem.videoWidth;
-            canvas.height = videoElem.videoHeight;
+            canvas.width = videoElem.videoWidth || 1920;
+            canvas.height = videoElem.videoHeight || 1080;
             const ctx = canvas.getContext('2d');
             ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
             
@@ -336,21 +380,19 @@
             }
         }
 
-        // Funzione ricalcolo contatore
         function recalculateCounter() {
             if (photos.length === 0) {
                 photoCounter = 0;
             } else {
-                // Trova il numero di foto più alto tra quelle rimaste
                 photoCounter = Math.max(...photos.map(p => p.number));
             }
-            localStorage.setItem('gps_photos_counter_pwa_v6', photoCounter);
+            localStorage.setItem('gps_photos_counter_pwa_v7', photoCounter);
         }
 
         document.getElementById('btn-reset-counter').addEventListener('click', () => {
             if (confirm("Azzerare la numerazione delle foto?")) { 
                 photoCounter = 0; 
-                localStorage.setItem('gps_photos_counter_pwa_v6', 0); 
+                localStorage.setItem('gps_photos_counter_pwa_v7', 0); 
                 updatePreviewUI(); 
             }
         });
@@ -376,14 +418,11 @@
             document.getElementById('single-photo-modal').classList.add('hidden')
         });
 
-        // Tasto Elimina Modal Singola
         document.getElementById('btn-single-delete').addEventListener('click', () => {
             if(confirm("Sei sicuro di voler eliminare questa foto?")) {
-                // Rimuovi la foto dall'array
                 photos = photos.filter(p => p.id !== currentActivePhotoId);
-                
-                recalculateCounter(); // Ricalcola il contatore
-                localStorage.setItem('gps_photos_pwa_v6', JSON.stringify(photos));
+                recalculateCounter();
+                localStorage.setItem('gps_photos_pwa_v7', JSON.stringify(photos));
                 
                 document.getElementById('single-photo-modal').classList.add('hidden');
                 renderGallery();
@@ -391,7 +430,6 @@
             }
         });
 
-        // Tasto Condividi Modal Singola
         document.getElementById('btn-single-share').addEventListener('click', async () => {
             const photo = photos.find(p => p.id === currentActivePhotoId);
             if (!photo) return;
@@ -404,16 +442,15 @@
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({ 
                             files: [file],
-                            title: `Foto GPS #${photo.number}`,
-                            text: `Categoria: ${photo.category}`
+                            title: `Foto GPS #${photo.number}`
                         });
                         return;
                     }
                 } catch (e) {
-                    console.error("Condivisione annullata o fallita", e);
+                    console.error("Errore condivisione", e);
                 }
             } else {
-                alert("Il tuo dispositivo/browser non supporta la condivisione nativa dei file.");
+                alert("Il tuo browser non supporta la condivisione nativa.");
             }
         });
 
@@ -427,22 +464,18 @@
                 return;
             }
 
-            // Raggruppa foto per data
             const grouped = {};
             photos.forEach(photo => {
                 if (!grouped[photo.dateStr]) grouped[photo.dateStr] = [];
                 grouped[photo.dateStr].push(photo);
             });
 
-            // Genera la UI della galleria raggruppata
             for (const date in grouped) {
-                // Intestazione Data
                 const dateHeader = document.createElement('div');
                 dateHeader.className = "text-amber-500 font-bold text-xs mt-4 mb-2 border-b border-gray-800 pb-1 sticky top-0 bg-gray-900/90 backdrop-blur z-10 px-1";
                 dateHeader.textContent = date;
                 container.appendChild(dateHeader);
 
-                // Griglia Foto
                 const grid = document.createElement('div');
                 grid.className = "grid grid-cols-3 gap-1.5";
 
