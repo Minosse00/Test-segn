@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Map Camera - Galleria Avanzata</title>
+    <title>GPS Map Camera - Condivisione Multipla</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>.hidden-input { display: none; }</style>
 </head>
@@ -95,12 +95,17 @@
                 </div>
             </div>
 
-            <!-- Controlli Selezione Multipla -->
+            <!-- Controlli Selezione Multipla (Azioni in Blocco) -->
             <div id="batch-controls" class="hidden flex justify-between items-center bg-gray-800 p-2 rounded-xl border border-gray-700 text-xs">
                 <span id="selected-count" class="text-gray-300 font-medium">0 selezionate</span>
-                <button onclick="eliminaSelezionate()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1 rounded transition">
-                    🗑️ Elimina Selezionate
-                </button>
+                <div class="flex gap-1.5">
+                    <button onclick="condividiSelezionate()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2.5 py-1 rounded transition">
+                        📤 Condividi Selezionate
+                    </button>
+                    <button onclick="eliminaSelezionate()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-2.5 py-1 rounded transition">
+                        🗑️ Elimina Selezionate
+                    </button>
+                </div>
             </div>
 
             <div id="lista-segnalazioni" class="space-y-3"></div>
@@ -368,7 +373,37 @@
                     }
                 }
             } else {
-                alert("La condivisione diretta dei file non è supportata da questo browser. Usa il tasto 'Salva sul Telefono'.");
+                alert("La condivisione diretta dei file non è supportata da questo browser. Usa il tasto 'Salva'.");
+            }
+        }
+
+        async function condividiSelezionate() {
+            const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+            if (checkboxes.length === 0) return;
+
+            const idsDaCondividere = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
+            let elementiSelezionati = archivio.filter(s => idsDaCondividere.includes(s.id));
+
+            let filesArray = elementiSelezionati.map(item => {
+                const blob = dataURLtoBlob(item.foto);
+                return new File([blob], item.filename, { type: 'image/jpeg' });
+            });
+
+            if (navigator.canShare && navigator.canShare({ files: filesArray })) {
+                try {
+                    await navigator.share({
+                        title: 'Segnalazioni multiple',
+                        text: `Invio di ${filesArray.length} segnalazioni GPS Map Camera`,
+                        files: filesArray
+                    });
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        console.error("Errore condivisione multipla", error);
+                    }
+                }
+            } else {
+                alert("Il tuo browser non supporta la condivisione simultanea di più file.");
             }
         }
 
@@ -388,7 +423,6 @@
             archivio = archivio.filter(s => s.id !== id);
             localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
             
-            // Se l'archivio è vuoto, azzera il contatore a 0
             if (archivio.length === 0) {
                 localStorage.setItem('counter_mapcamera', '0');
             }
@@ -399,7 +433,7 @@
         function svuotaArchivio() {
             if (!confirm("Vuoi svuotare tutta la galleria interna?")) return;
             localStorage.removeItem('archivio_mapcamera');
-            localStorage.setItem('counter_mapcamera', '0'); // Azzeramento contatore a 0
+            localStorage.setItem('counter_mapcamera', '0');
             mostraSegnalazioni();
         }
 
