@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>GPS Map Camera SP - Frontale</title>
+    <title>GPS Map Camera SP</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -17,6 +17,7 @@
             color: #ffffff;
             font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             position: fixed;
+            touch-action: pan-y;
         }
         * {
             box-sizing: border-box;
@@ -46,7 +47,7 @@
         </div>
     </header>
 
-    <!-- BARRA SELEZIONE CATEGORIA (Taglio Erba, Buche, Segnaletica, Altro) -->
+    <!-- BARRA SELEZIONE CATEGORIA -->
     <div class="bg-gray-900/80 px-3 py-1.5 border-b border-gray-800/80 z-10 shrink-0 flex items-center gap-2">
         <span class="text-[10px] text-gray-400 font-medium shrink-0"><i class="fa-solid fa-tag text-amber-400"></i> Categoria:</span>
         <select id="category-select" class="w-full bg-gray-800 text-amber-300 text-xs font-semibold rounded-lg px-2 py-1 border border-gray-700 focus:outline-none focus:border-amber-500">
@@ -57,11 +58,15 @@
         </select>
     </div>
 
-    <!-- VIEWPORT FOTOCAMERA (FRONTALE) -->
-    <main class="relative w-full flex-1 bg-black flex items-center justify-center overflow-hidden">
-        <!-- Specchiata in anteprima live per comodità d'uso della camera frontale -->
-        <video id="camera-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover -scale-x-100"></video>
+    <!-- VIEWPORT FOTOCAMERA (POSTERIORE) -->
+    <main id="main-viewport" class="relative w-full flex-1 bg-black flex items-center justify-center overflow-hidden">
+        <video id="camera-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
         <canvas id="photo-canvas" class="hidden"></canvas>
+
+        <!-- INDICATORE SWIPE TO REFRESH -->
+        <div id="refresh-indicator" class="absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-black text-[10px] font-bold px-3 py-1 rounded-full shadow-lg transition-all duration-300 -translate-y-12 opacity-0 z-20 flex items-center gap-1">
+            <i class="fa-solid fa-rotate animate-spin"></i> Aggiornamento in corso...
+        </div>
 
         <!-- OVERLAY DATI SU FOTO / ANTEPRIMA LIVE -->
         <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
@@ -76,7 +81,7 @@
     </main>
 
     <!-- CONTROLLI INFERIORI -->
-    <footer class="w-full bg-gray-900 px-6 py-3 flex items-center justify-between border-t border-gray-800 z-10 shrink-0">
+    <footer class="w-full bg-gray-900 px-4 py-3 flex items-center justify-around border-t border-gray-800 z-10 shrink-0">
         <!-- ANTEPRIMA FOTO -->
         <button id="btn-gallery-open" class="relative w-12 h-12 rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden focus:outline-none shadow-lg active:scale-95 transition shrink-0 flex items-center justify-center">
             <img id="preview-thumb" src="" alt="" class="w-full h-full object-cover hidden">
@@ -91,8 +96,10 @@
             <div class="bg-white rounded-full w-[52px] h-[52px]"></div>
         </button>
 
-        <!-- SPAZIATORE PER BILANCIARE IL LAYOUT -->
-        <div class="w-12"></div>
+        <!-- CAMBIA FOTOCAMERA -->
+        <button id="btn-switch-camera" class="w-12 h-12 rounded-full bg-gray-800 text-gray-300 flex items-center justify-center focus:outline-none hover:bg-gray-700 active:scale-95 transition shrink-0">
+            <i class="fa-solid fa-rotate-camera text-base"></i>
+        </button>
     </footer>
 
     <!-- MODALE GALLERIA -->
@@ -127,13 +134,33 @@
         </div>
     </div>
 
+    <!-- MODALE AZIONE SINGOLA FOTO (MENU AL TOCCO) -->
+    <div id="single-photo-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-800 rounded-xl max-w-xs w-full p-4 flex flex-col items-center shadow-2xl">
+            <img id="single-photo-preview" src="" class="w-48 h-48 object-cover rounded-lg mb-3 border border-gray-800">
+            <h3 id="single-photo-title" class="text-xs font-bold text-amber-400 mb-1">Foto</h3>
+            <p id="single-photo-info" class="text-[10px] text-gray-300 text-center mb-4 truncate w-full"></p>
+            <div class="flex gap-2 w-full">
+                <button id="btn-single-share" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs py-2 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition">
+                    <i class="fa-solid fa-share-nodes"></i> Condividi
+                </button>
+                <button id="btn-single-delete" class="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-3 py-2 rounded-lg text-xs font-semibold transition" title="Elimina foto">
+                    <i class="fa-solid fa-trash"></i>
+                </button>
+            </div>
+            <button id="btn-close-single" class="mt-3 text-[11px] text-gray-500 hover:text-gray-300">Chiudi</button>
+        </div>
+    </div>
+
     <!-- SCRIPT LOGICA APPLICATIVA -->
     <script>
         let stream = null;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_sp_front') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_front') || '0');
+        let useFrontCamera = false;
+        let photos = JSON.parse(localStorage.getItem('gps_photos_sp_back') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_back') || '0');
         let isSelectionMode = false;
         let selectedPhotoIds = new Set();
+        let currentActivePhotoId = null;
         let currentGPS = { lat: 0, lon: 0, address: "Rilevamento...", sp: null };
 
         const videoElem = document.getElementById('camera-feed');
@@ -142,6 +169,8 @@
         const locationLabel = document.getElementById('location-label');
         const offlineBadge = document.getElementById('offline-badge');
         const categorySelect = document.getElementById('category-select');
+        const refreshIndicator = document.getElementById('refresh-indicator');
+        const mainViewport = document.getElementById('main-viewport');
         
         const overlayBox = document.getElementById('overlay-box');
         const overlayCategory = document.getElementById('overlay-category');
@@ -154,7 +183,13 @@
         const previewPlaceholder = document.getElementById('preview-placeholder');
         const photoCounterBadge = document.getElementById('photo-counter-badge');
 
-        // Avvio Fotocamera Forzata Frontale (user)
+        // Modale singolo
+        const singlePhotoModal = document.getElementById('single-photo-modal');
+        const singlePhotoPreview = document.getElementById('single-photo-preview');
+        const singlePhotoTitle = document.getElementById('single-photo-title');
+        const singlePhotoInfo = document.getElementById('single-photo-info');
+
+        // Avvio Fotocamera Posteriore (environment)
         async function initCamera() {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
@@ -162,7 +197,7 @@
             try {
                 const constraints = {
                     video: {
-                        facingMode: "user",
+                        facingMode: useFrontCamera ? "user" : { exact: "environment" },
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     }
@@ -171,10 +206,10 @@
                 videoElem.srcObject = stream;
             } catch (err) {
                 try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? "user" : "environment" } });
                     videoElem.srcObject = stream;
                 } catch (e) {
-                    alert("Impossibile accedere alla fotocamera frontale. Controlla i permessi.");
+                    alert("Impossibile accedere alla fotocamera. Controlla i permessi.");
                 }
             }
         }
@@ -199,7 +234,6 @@
                         
                         currentGPS.address = `${city} ${road ? '(' + road + ')' : ''}`;
 
-                        // Rilevamento effettivo SP
                         const upperRoad = road.toUpperCase();
                         if (upperRoad.includes("SP ") || upperRoad.includes("STRADA PROVINCIALE") || upperRoad.startsWith("SP") || upperRoad.includes("SR ")) {
                             currentGPS.sp = road;
@@ -227,18 +261,46 @@
             }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
         }
 
-        // Aggiornamento live categoria su overlay
+        // Pull-to-Refresh (Swipe verso il basso per aggiornare app e GPS)
+        let startY = 0;
+        mainViewport.addEventListener('touchstart', (e) => {
+            if (mainViewport.scrollTop === 0) {
+                startY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        mainViewport.addEventListener('touchmove', (e) => {
+            const currentY = e.touches[0].clientY;
+            if (startY && currentY - startY > 90) {
+                triggerRefresh();
+                startY = 0;
+            }
+        }, { passive: true });
+
+        function triggerRefresh() {
+            refreshIndicator.classList.remove('-translate-y-12', 'opacity-0');
+            initCamera();
+            initGPS();
+            setTimeout(() => {
+                refreshIndicator.classList.add('-translate-y-12', 'opacity-0');
+            }, 1200);
+        }
+
         categorySelect.addEventListener('change', () => {
             overlayCategory.textContent = `Categoria: ${categorySelect.value}`;
         });
 
-        // Tasto Reset Contatore
         document.getElementById('btn-reset-counter').addEventListener('click', () => {
             if (confirm("Vuoi azzerare la numerazione progressiva delle foto?")) {
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_front', 0);
+                localStorage.setItem('gps_photos_counter_back', 0);
                 updatePreviewUI();
             }
+        });
+
+        document.getElementById('btn-switch-camera').addEventListener('click', () => {
+            useFrontCamera = !useFrontCamera;
+            initCamera();
         });
 
         function updateNetworkStatus() {
@@ -256,22 +318,16 @@
             overlayDate.textContent = `Data: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
         }, 1000);
 
-        // Scatto foto con camera frontale (inverte la canvas per mantenere la foto dritta e non specchiata)
         document.getElementById('btn-capture').addEventListener('click', () => {
             const canvas = canvasElem;
             canvas.width = videoElem.videoWidth || 1280;
             canvas.height = videoElem.videoHeight || 720;
             const ctx = canvas.getContext('2d');
             
-            ctx.save();
-            // Despecchia l'immagine salvata rispetto alla preview live frontale
-            ctx.scale(-1, 1);
-            ctx.drawImage(videoElem, -canvas.width, 0, canvas.width, canvas.height);
-            ctx.restore();
+            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
 
             const selectedCategory = categorySelect.value;
 
-            // Stampa overlay completo su foto
             ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
             ctx.fillRect(20, canvas.height - 210, 560, currentGPS.sp ? 180 : 150);
             
@@ -314,8 +370,8 @@
         });
 
         function saveDataToStorage() {
-            localStorage.setItem('gps_photos_sp_front', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_front', photoCounter);
+            localStorage.setItem('gps_photos_sp_back', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_back', photoCounter);
         }
 
         function updatePreviewUI() {
@@ -328,7 +384,7 @@
                 previewThumb.classList.add('hidden');
                 previewPlaceholder.classList.remove('hidden');
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_front', 0);
+                localStorage.setItem('gps_photos_counter_back', 0);
                 photoCounterBadge.textContent = 0;
             }
         }
@@ -387,7 +443,12 @@
                             renderGallery();
                             updateSelectionToolbar();
                         } else {
-                            alert(`Foto #${photo.number} [${photo.category}]\n${photo.info}`);
+                            // Apre il menu singolo foto al tocco
+                            currentActivePhotoId = photo.id;
+                            singlePhotoPreview.src = photo.data;
+                            singlePhotoTitle.textContent = `Foto #${photo.number} [${photo.category}]`;
+                            singlePhotoInfo.textContent = photo.info;
+                            singlePhotoModal.classList.remove('hidden');
                         }
                     });
                     grid.appendChild(item);
@@ -395,6 +456,49 @@
                 container.appendChild(daySection);
             }
         }
+
+        // Chiusura menu singolo foto
+        document.getElementById('btn-close-single').addEventListener('click', () => {
+            singlePhotoModal.classList.add('hidden');
+        });
+
+        // Azione Condividi Singola Foto dal Menu
+        document.getElementById('btn-single-share').addEventListener('click', async () => {
+            const photo = photos.find(p => p.id === currentActivePhotoId);
+            if (!photo) return;
+            if (navigator.share) {
+                try {
+                    const blob = await (await fetch(photo.data)).blob();
+                    const file = new File([blob], `Foto_${photo.category}_${photo.number}.jpg`, { type: 'image/jpeg' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            title: `Foto #${photo.number}`,
+                            text: photo.info,
+                            files: [file]
+                        });
+                        return;
+                    }
+                } catch (e) {
+                    console.log("Condivisione annullata", e);
+                }
+            }
+            alert("Condivisione file non supportata o annullata dal browser.");
+        });
+
+        // Azione Elimina Singola Foto dal Menu
+        document.getElementById('btn-single-delete').addEventListener('click', () => {
+            if (confirm("Eliminare questa foto?")) {
+                photos = photos.filter(p => p.id !== currentActivePhotoId);
+                if (photos.length === 0) {
+                    photoCounter = 0;
+                    localStorage.setItem('gps_photos_counter_back', 0);
+                }
+                saveDataToStorage();
+                singlePhotoModal.classList.add('hidden');
+                renderGallery();
+                updatePreviewUI();
+            }
+        });
 
         const btnToggleSelect = document.getElementById('btn-toggle-select');
         const selectionToolbar = document.getElementById('selection-toolbar');
@@ -436,7 +540,7 @@
                 
                 if (photos.length === 0) {
                     photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_front', 0);
+                    localStorage.setItem('gps_photos_counter_back', 0);
                 }
                 
                 saveDataToStorage();
@@ -453,7 +557,7 @@
                     let filesArray = [];
                     for (let p of selectedPhotos) {
                         const blob = await (await fetch(p.data)).blob();
-                        filesArray.push(new File([blob], `Foto_${p.category}_${p.number}.jpg`, { type: 'image/jpeg' }));
+                        filesArray.push(new File([blob], `Foto_SP_${p.number}.jpg`, { type: 'image/jpeg' }));
                     }
                     if (navigator.canShare && navigator.canShare({ files: filesArray })) {
                         await navigator.share({
