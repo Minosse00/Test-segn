@@ -2,43 +2,17 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>La mia Web App</title>
-
-    <!-- Manifest integrato direttamente nel codice (nessun file esterno necessario) -->
-    <link rel="manifest" href='data:application/manifest+json;charset=utf-8,{"name":"La Mia Web App","short_name":"MiaApp","start_url":"./","display":"standalone","background_color":"%23ffffff","theme_color":"%232196F3","icons":[{"src":"https://via.placeholder.com/192.png?text=App","sizes":"192x192","type":"image/png"},{"src":"https://via.placeholder.com/512.png?text=App","sizes":"512x512","type":"image/png"}]}'>
-
-    <!-- Inserisci qui i tuoi stili CSS personalizzati -->
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-            background-color: #f4f4f9;
-        }
-        h1 {
-            color: #333;
-        }
-    </style>
-</head>
-<body>
-
-    <!-- IL TUO CODICE HTML ESISTENTE VA QUI -->
-   <!DOCTYPE html>
-<html lang="it">
-<head>
-    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GPS Map Camera SP</title>
     
-    <!-- PWA Meta Tags -->
+    <!-- Meta tag PWA -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GPS Camera">
     <meta name="theme-color" content="#030712">
 
-    <!-- Web App Manifest Staticamente Integrato per consentire l'installazione su Chrome -->
+    <!-- Manifest PWA integrato -->
     <link rel="manifest" href='data:application/manifest+json,{
         "name": "GPS Map Camera SP",
         "short_name": "GPS Camera",
@@ -577,19 +551,6 @@
             else offlineBadge.classList.remove('hidden');
             updatePreviewUI();
         });
-    </script>
-</body>
-</html>
-
-    <!-- Script automatico per attivare i requisiti PWA di Chrome -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            const swCode = "self.addEventListener('fetch', function(event) {});";
-            const blob = new Blob([swCode], { type: 'text/javascript' });
-            navigator.serviceWorker.register(URL.createObjectURL(blob))
-                .then(() => console.log("PWA pronta"))
-                .catch(err => console.log("Errore PWA", err));
-        }
     </script>
 </body>
 </html>
