@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Map Camera - Condivisione Multipla</title>
+    <title>GPS Map Camera - Condivisione Pulita</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>.hidden-input { display: none; }</style>
 </head>
@@ -362,9 +362,8 @@
 
             if (navigator.canShare && navigator.canShare({ files: [file] })) {
                 try {
+                    // Condivisione solo del file immagine senza testo preimpostato, lasciando spazio alla didascalia dell'app
                     await navigator.share({
-                        title: `Segnalazione ${item.progressivo}`,
-                        text: `${item.categoria} - ${item.luogo} (${item.data})`,
                         files: [file]
                     });
                 } catch (error) {
@@ -392,9 +391,8 @@
 
             if (navigator.canShare && navigator.canShare({ files: filesArray })) {
                 try {
+                    // Condivisione multipla dei soli file immagine senza testo preimpostato
                     await navigator.share({
-                        title: 'Segnalazioni multiple',
-                        text: `Invio di ${filesArray.length} segnalazioni GPS Map Camera`,
                         files: filesArray
                     });
                 } catch (error) {
