@@ -59,11 +59,18 @@
             <button class="zoom-btn w-9 h-9 rounded-full font-bold text-xs transition-colors bg-gray-700 text-white border border-gray-600 active:scale-90" data-zoom="2">2x</button>
         </div>
 
+        <!-- BOX OVERLAY CON ANTEPRIMA MAPPA LIVE -->
         <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
-            <div id="overlay-box" class="bg-black/75 backdrop-blur-md p-2.5 rounded-lg border border-white/15 max-w-[300px] text-[10px] space-y-1 shadow-2xl">
-                <div class="font-bold text-amber-300 truncate text-[11px]" id="overlay-category">Taglio erba</div>
-                <div class="text-white truncate font-bold text-[11px]" id="overlay-addr">Ricerca via e città in corso...</div>
-                <div class="text-gray-300 text-[9px]" id="overlay-coords">Lat: 0.0000, Lon: 0.0000</div>
+            <div id="overlay-box" class="bg-black/80 backdrop-blur-md p-2.5 rounded-lg border border-white/15 max-w-[340px] shadow-2xl flex items-center gap-2.5">
+                <div id="live-map-container" class="w-14 h-14 rounded bg-gray-800 border border-white/30 overflow-hidden shrink-0 flex items-center justify-center">
+                    <img id="live-map-thumb" src="" alt="Mappa" class="w-full h-full object-cover hidden">
+                    <span id="live-map-placeholder" class="text-[9px] text-gray-400 text-center leading-tight">Mappa...</span>
+                </div>
+                <div class="overflow-hidden space-y-0.5 flex-1 text-[10px]">
+                    <div class="font-bold text-amber-300 truncate text-[11px]" id="overlay-category">Taglio erba</div>
+                    <div class="text-white truncate font-bold" id="overlay-addr">Ricerca via e città in corso...</div>
+                    <div class="text-gray-300 text-[9px]" id="overlay-coords">Lat: 0.0000, Lon: 0.0000</div>
+                </div>
             </div>
         </div>
     </main>
@@ -160,8 +167,8 @@
         });
 
         let stream = null;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v10') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v10') || '0');
+        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v11') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v11') || '0');
         let currentGPS = { lat: 0, lon: 0 };
         let currentAddressString = "Ricerca via e città in corso...";
         let lastGeocodeTime = 0;
@@ -177,8 +184,9 @@
         const overlayCategory = document.getElementById('overlay-category');
         const overlayCoords = document.getElementById('overlay-coords');
         const fileUpload = document.getElementById('file-upload');
+        const liveMapThumb = document.getElementById('live-map-thumb');
+        const liveMapPlaceholder = document.getElementById('live-map-placeholder');
 
-        // FUNZIONE SUONO DI SCATTO (Sintesi Audio Nativa)
         function playShutterSound() {
             try {
                 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -198,7 +206,7 @@
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.08);
             } catch (e) {
-                console.log("Audio non supportato o bloccato dal browser");
+                console.log("Audio non supportato");
             }
         }
 
@@ -206,14 +214,12 @@
         zoomBtns.forEach(btn => {
             btn.addEventListener('click', () => {
                 const zoomVal = parseFloat(btn.dataset.zoom);
-                
                 zoomBtns.forEach(b => {
                     b.classList.remove('bg-amber-500', 'text-black', 'border-amber-400');
                     b.classList.add('bg-gray-700', 'text-white', 'border-gray-600');
                 });
                 btn.classList.remove('bg-gray-700', 'text-white', 'border-gray-600');
                 btn.classList.add('bg-amber-500', 'text-black', 'border-amber-400');
-
                 applyZoom(zoomVal);
             });
         });
@@ -227,20 +233,14 @@
                 hardwareZoomSupported = true;
                 let minZ = capabilities.zoom.min || 1;
                 let maxZ = capabilities.zoom.max || 2;
-                
                 let finalZoom = val;
                 if (val === 0.6) finalZoom = minZ; 
                 if (finalZoom > maxZ) finalZoom = maxZ;
 
-                track.applyConstraints({ advanced: [{ zoom: finalZoom }] })
-                     .catch(e => console.log("Errore Zoom Hardware:", e));
+                track.applyConstraints({ advanced: [{ zoom: finalZoom }] }).catch(e => {});
             } else {
                 hardwareZoomSupported = false;
-                if (val >= 1) {
-                    videoElem.style.transform = `scale(${val})`;
-                } else {
-                    videoElem.style.transform = `scale(1)`;
-                }
+                videoElem.style.transform = val >= 1 ? `scale(${val})` : `scale(1)`;
             }
         }
 
@@ -267,6 +267,16 @@
                     locationLabel.textContent = coordStr;
                     overlayCoords.textContent = coordStr;
                     
+                    // Aggiorna la miniatura live della mappa
+                    const rawMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=150x150&maptype=mapnik&markers=${currentGPS.lat},${currentGPS.lon},red-pushpin`;
+                    const proxyMapUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawMapUrl)}`;
+                    
+                    liveMapThumb.src = proxyMapUrl;
+                    liveMapThumb.onload = () => {
+                        liveMapThumb.classList.remove('hidden');
+                        liveMapPlaceholder.classList.add('hidden');
+                    };
+
                     const now = Date.now();
                     if (now - lastGeocodeTime > 7000) { 
                         lastGeocodeTime = now;
@@ -277,17 +287,9 @@
                             if (data && data.address) {
                                 let road = data.address.road || data.address.pedestrian || "";
                                 let city = data.address.city || data.address.town || data.address.village || "";
-                                let spFound = false;
+                                let spFound = road.toUpperCase().includes("SP") || road.toUpperCase().includes("STRADA PROVINCIALE");
 
-                                if (road.toUpperCase().includes("SP") || road.toUpperCase().includes("STRADA PROVINCIALE")) {
-                                    spFound = true;
-                                }
-
-                                if (road || city) {
-                                    currentAddressString = `${road}${road && city ? ', ' : ''}${city}`;
-                                } else {
-                                    currentAddressString = "Indirizzo non mappato";
-                                }
+                                currentAddressString = (road || city) ? `${road}${road && city ? ', ' : ''}${city}` : "Indirizzo non mappato";
                                 
                                 if (spFound) {
                                     spLabel.innerHTML = `GPS Attivo <span class="bg-amber-500 text-black px-1.5 py-0.5 rounded text-[9px] ml-1 uppercase shadow-sm">SP</span>`;
@@ -372,7 +374,7 @@
 
         function finalizePhoto(canvas) {
             photoCounter++;
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.9); // Salvataggio in formato JPEG
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
             const now = new Date();
             
             photos.unshift({
@@ -385,14 +387,13 @@
                 info: `${currentAddressString} \nLat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)}`
             });
             
-            localStorage.setItem('gps_photos_pwa_v10', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_pwa_v10', photoCounter);
+            localStorage.setItem('gps_photos_pwa_v11', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_pwa_v11', photoCounter);
             updatePreviewUI();
         }
 
         document.getElementById('btn-capture').addEventListener('click', () => {
-            playShutterSound(); // Esegue il suono di scatto
-
+            playShutterSound();
             const canvas = canvasElem;
             canvas.width = videoElem.videoWidth || 1920;
             canvas.height = videoElem.videoHeight || 1080;
@@ -454,18 +455,14 @@
         }
 
         function recalculateCounter() {
-            if (photos.length === 0) {
-                photoCounter = 0;
-            } else {
-                photoCounter = Math.max(...photos.map(p => p.number));
-            }
-            localStorage.setItem('gps_photos_counter_pwa_v10', photoCounter);
+            photoCounter = photos.length === 0 ? 0 : Math.max(...photos.map(p => p.number));
+            localStorage.setItem('gps_photos_counter_pwa_v11', photoCounter);
         }
 
         document.getElementById('btn-reset-counter').addEventListener('click', () => {
             if (confirm("Azzerare la numerazione delle foto?")) { 
                 photoCounter = 0; 
-                localStorage.setItem('gps_photos_counter_pwa_v10', 0); 
+                localStorage.setItem('gps_photos_counter_pwa_v11', 0); 
                 updatePreviewUI(); 
             }
         });
@@ -492,8 +489,7 @@
             if(confirm("Sei sicuro di voler eliminare questa foto?")) {
                 photos = photos.filter(p => p.id !== currentActivePhotoId);
                 recalculateCounter();
-                localStorage.setItem('gps_photos_pwa_v10', JSON.stringify(photos));
-                
+                localStorage.setItem('gps_photos_pwa_v11', JSON.stringify(photos));
                 document.getElementById('single-photo-modal').classList.add('hidden');
                 renderGallery();
                 updatePreviewUI();
@@ -503,18 +499,14 @@
         document.getElementById('btn-single-share').addEventListener('click', async () => {
             const photo = photos.find(p => p.id === currentActivePhotoId);
             if (!photo) return;
-            
             if (navigator.share) {
                 try {
                     const blob = await (await fetch(photo.data)).blob();
                     const file = new File([blob], `Foto_GPS_${photo.number}.jpg`, { type: 'image/jpeg' });
-                    
                     if (navigator.canShare && navigator.canShare({ files: [file] })) {
                         await navigator.share({ files: [file], title: `Foto GPS #${photo.number}` });
                     }
-                } catch (e) {
-                    console.error("Errore condivisione", e);
-                }
+                } catch (e) {}
             } else {
                 alert("Condivisione nativa non supportata dal browser.");
             }
@@ -552,7 +544,6 @@
                         <img src="${photo.data}" class="w-full h-full object-cover">
                         <div class="absolute top-1 left-1 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md">#${photo.number}</div>
                     `;
-                    
                     item.addEventListener('click', () => {
                         currentActivePhotoId = photo.id;
                         document.getElementById('single-photo-preview').src = photo.data;
