@@ -47,17 +47,6 @@
         </div>
     </header>
 
-    <!-- BARRA SELEZIONE CATEGORIA -->
-    <div class="bg-gray-900/80 px-3 py-1.5 border-b border-gray-800/80 z-10 shrink-0 flex items-center gap-2">
-        <span class="text-[10px] text-gray-400 font-medium shrink-0"><i class="fa-solid fa-tag text-amber-400"></i> Categoria:</span>
-        <select id="category-select" class="w-full bg-gray-800 text-amber-300 text-xs font-semibold rounded-lg px-2 py-1 border border-gray-700 focus:outline-none focus:border-amber-500">
-            <option value="Taglio Erba">Taglio Erba</option>
-            <option value="Buche">Buche</option>
-            <option value="Segnaletica">Segnaletica</option>
-            <option value="Altro" selected>Altro</option>
-        </select>
-    </div>
-
     <!-- VIEWPORT FOTOCAMERA (POSTERIORE) -->
     <main id="main-viewport" class="relative w-full flex-1 bg-black flex items-center justify-center overflow-hidden">
         <video id="camera-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
@@ -71,7 +60,7 @@
         <!-- OVERLAY DATI SU FOTO / ANTEPRIMA LIVE -->
         <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
             <div id="overlay-box" class="bg-black/65 backdrop-blur-md p-2 rounded-lg border border-white/15 max-w-[280px] text-[10px] space-y-0.5 shadow-lg">
-                <div class="font-bold text-amber-300 truncate" id="overlay-category">Categoria: Altro</div>
+                <div class="font-bold text-amber-300 truncate" id="overlay-category">Taglio erba</div>
                 <div class="font-bold text-amber-400 truncate hidden" id="overlay-sp">--</div>
                 <div class="text-gray-100 truncate" id="overlay-addr">Indirizzo: Rilevamento...</div>
                 <div class="text-gray-300 text-[9px]" id="overlay-coords">Lat: 0.0000, Lon: 0.0000</div>
@@ -80,7 +69,7 @@
         </div>
     </main>
 
-    <!-- CONTROLLI INFERIORI -->
+    <!-- CONTROLLI INFERIORI (Categoria al posto del cambio fotocamera) -->
     <footer class="w-full bg-gray-900 px-4 py-3 flex items-center justify-around border-t border-gray-800 z-10 shrink-0">
         <!-- ANTEPRIMA FOTO -->
         <button id="btn-gallery-open" class="relative w-12 h-12 rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden focus:outline-none shadow-lg active:scale-95 transition shrink-0 flex items-center justify-center">
@@ -96,10 +85,18 @@
             <div class="bg-white rounded-full w-[52px] h-[52px]"></div>
         </button>
 
-        <!-- CAMBIA FOTOCAMERA -->
-        <button id="btn-switch-camera" class="w-12 h-12 rounded-full bg-gray-800 text-gray-300 flex items-center justify-center focus:outline-none hover:bg-gray-700 active:scale-95 transition shrink-0">
-            <i class="fa-solid fa-rotate-camera text-base"></i>
-        </button>
+        <!-- SEZIONE CATEGORIA NEL FOOTER -->
+        <div class="flex flex-col justify-center bg-gray-800/90 border border-gray-700 px-2.5 py-1.5 rounded-xl shrink-0 w-32 shadow-lg">
+            <span class="text-[9px] text-gray-400 font-semibold mb-0.5 flex items-center gap-1">
+                <i class="fa-solid fa-tag text-amber-400"></i> Categoria
+            </span>
+            <select id="category-select" class="w-full bg-gray-900 text-amber-300 text-[11px] font-bold rounded px-1 py-0.5 border border-gray-700 focus:outline-none focus:border-amber-500">
+                <option value="Taglio erba" selected>Taglio erba</option>
+                <option value="Buche">Buche</option>
+                <option value="Segnaletica">Segnaletica</option>
+                <option value="Altro">Altro</option>
+            </select>
+        </div>
     </footer>
 
     <!-- MODALE GALLERIA -->
@@ -155,9 +152,8 @@
     <!-- SCRIPT LOGICA APPLICATIVA -->
     <script>
         let stream = null;
-        let useFrontCamera = false;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_sp_back') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_back') || '0');
+        let photos = JSON.parse(localStorage.getItem('gps_photos_sp_nocamera_btn') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_nocamera_btn') || '0');
         let isSelectionMode = false;
         let selectedPhotoIds = new Set();
         let currentActivePhotoId = null;
@@ -183,13 +179,11 @@
         const previewPlaceholder = document.getElementById('preview-placeholder');
         const photoCounterBadge = document.getElementById('photo-counter-badge');
 
-        // Modale singolo
         const singlePhotoModal = document.getElementById('single-photo-modal');
         const singlePhotoPreview = document.getElementById('single-photo-preview');
         const singlePhotoTitle = document.getElementById('single-photo-title');
         const singlePhotoInfo = document.getElementById('single-photo-info');
 
-        // Avvio Fotocamera Posteriore (environment)
         async function initCamera() {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
@@ -197,7 +191,7 @@
             try {
                 const constraints = {
                     video: {
-                        facingMode: useFrontCamera ? "user" : { exact: "environment" },
+                        facingMode: { exact: "environment" },
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     }
@@ -206,10 +200,10 @@
                 videoElem.srcObject = stream;
             } catch (err) {
                 try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? "user" : "environment" } });
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
                     videoElem.srcObject = stream;
                 } catch (e) {
-                    alert("Impossibile accedere alla fotocamera. Controlla i permessi.");
+                    alert("Impossibile accedere alla fotocamera posteriore. Controlla i permessi.");
                 }
             }
         }
@@ -251,7 +245,7 @@
                     overlaySp.textContent = currentGPS.sp;
                     overlaySp.classList.remove('hidden');
                 } else {
-                    spLabel.textContent = "Tratto stradale ordinario";
+                    spLabel.textContent = "Tratto ordinario";
                     overlaySp.classList.add('hidden');
                 }
                 locationLabel.textContent = currentGPS.address;
@@ -261,7 +255,6 @@
             }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
         }
 
-        // Pull-to-Refresh (Swipe verso il basso per aggiornare app e GPS)
         let startY = 0;
         mainViewport.addEventListener('touchstart', (e) => {
             if (mainViewport.scrollTop === 0) {
@@ -287,20 +280,15 @@
         }
 
         categorySelect.addEventListener('change', () => {
-            overlayCategory.textContent = `Categoria: ${categorySelect.value}`;
+            overlayCategory.textContent = categorySelect.value;
         });
 
         document.getElementById('btn-reset-counter').addEventListener('click', () => {
             if (confirm("Vuoi azzerare la numerazione progressiva delle foto?")) {
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_back', 0);
+                localStorage.setItem('gps_photos_counter_nocamera_btn', 0);
                 updatePreviewUI();
             }
-        });
-
-        document.getElementById('btn-switch-camera').addEventListener('click', () => {
-            useFrontCamera = !useFrontCamera;
-            initCamera();
         });
 
         function updateNetworkStatus() {
@@ -370,8 +358,8 @@
         });
 
         function saveDataToStorage() {
-            localStorage.setItem('gps_photos_sp_back', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_back', photoCounter);
+            localStorage.setItem('gps_photos_sp_nocamera_btn', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_nocamera_btn', photoCounter);
         }
 
         function updatePreviewUI() {
@@ -384,7 +372,7 @@
                 previewThumb.classList.add('hidden');
                 previewPlaceholder.classList.remove('hidden');
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_back', 0);
+                localStorage.setItem('gps_photos_counter_nocamera_btn', 0);
                 photoCounterBadge.textContent = 0;
             }
         }
@@ -429,7 +417,7 @@
                     item.innerHTML = `
                         <img src="${photo.data}" class="w-full h-full object-cover">
                         <div class="absolute top-0.5 left-0.5 bg-black/70 text-white text-[9px] font-bold px-1 py-0.5 rounded">#${photo.number}</div>
-                        <div class="absolute bottom-0.5 right-0.5 bg-amber-500/90 text-black text-[8px] font-bold px-1 rounded truncate max-w-[80%]">${photo.category || 'Altro'}</div>
+                        <div class="absolute bottom-0.5 right-0.5 bg-amber-500/90 text-black text-[8px] font-bold px-1 rounded truncate max-w-[80%]">${photo.category}</div>
                         ${isSelectionMode ? `<div class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full border border-white flex items-center justify-center ${selectedPhotoIds.has(photo.id) ? 'bg-amber-500 text-black' : 'bg-black/40'}"><i class="fa-solid fa-check text-[9px] ${selectedPhotoIds.has(photo.id) ? '' : 'hidden'}"></i></div>` : ''}
                     `;
                     
@@ -443,7 +431,6 @@
                             renderGallery();
                             updateSelectionToolbar();
                         } else {
-                            // Apre il menu singolo foto al tocco
                             currentActivePhotoId = photo.id;
                             singlePhotoPreview.src = photo.data;
                             singlePhotoTitle.textContent = `Foto #${photo.number} [${photo.category}]`;
@@ -457,12 +444,10 @@
             }
         }
 
-        // Chiusura menu singolo foto
         document.getElementById('btn-close-single').addEventListener('click', () => {
             singlePhotoModal.classList.add('hidden');
         });
 
-        // Azione Condividi Singola Foto dal Menu
         document.getElementById('btn-single-share').addEventListener('click', async () => {
             const photo = photos.find(p => p.id === currentActivePhotoId);
             if (!photo) return;
@@ -485,13 +470,12 @@
             alert("Condivisione file non supportata o annullata dal browser.");
         });
 
-        // Azione Elimina Singola Foto dal Menu
         document.getElementById('btn-single-delete').addEventListener('click', () => {
             if (confirm("Eliminare questa foto?")) {
                 photos = photos.filter(p => p.id !== currentActivePhotoId);
                 if (photos.length === 0) {
                     photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_back', 0);
+                    localStorage.setItem('gps_photos_counter_nocamera_btn', 0);
                 }
                 saveDataToStorage();
                 singlePhotoModal.classList.add('hidden');
@@ -540,7 +524,7 @@
                 
                 if (photos.length === 0) {
                     photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_back', 0);
+                    localStorage.setItem('gps_photos_counter_nocamera_btn', 0);
                 }
                 
                 saveDataToStorage();
