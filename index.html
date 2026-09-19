@@ -59,13 +59,10 @@
             <button class="zoom-btn w-9 h-9 rounded-full font-bold text-xs transition-colors bg-gray-700 text-white border border-gray-600 active:scale-90" data-zoom="2">2x</button>
         </div>
 
-        <!-- BOX OVERLAY CON ANTEPRIMA MAPPA LIVE -->
+        <!-- BOX OVERLAY CON MAPPA RADAR LIVE INTERNA -->
         <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
-            <div id="overlay-box" class="bg-black/80 backdrop-blur-md p-2.5 rounded-lg border border-white/15 max-w-[340px] shadow-2xl flex items-center gap-2.5">
-                <div id="live-map-container" class="w-14 h-14 rounded bg-gray-800 border border-white/30 overflow-hidden shrink-0 flex items-center justify-center">
-                    <img id="live-map-thumb" src="" alt="Mappa" class="w-full h-full object-cover hidden">
-                    <span id="live-map-placeholder" class="text-[9px] text-gray-400 text-center leading-tight">Mappa...</span>
-                </div>
+            <div id="overlay-box" class="bg-black/85 backdrop-blur-md p-2.5 rounded-lg border border-white/15 max-w-[340px] shadow-2xl flex items-center gap-2.5">
+                <canvas id="live-map-canvas" width="120" height="120" class="w-14 h-14 rounded bg-gray-900 border border-white/30 shrink-0"></canvas>
                 <div class="overflow-hidden space-y-0.5 flex-1 text-[10px]">
                     <div class="font-bold text-amber-300 truncate text-[11px]" id="overlay-category">Taglio erba</div>
                     <div class="text-white truncate font-bold" id="overlay-addr">Ricerca via e città in corso...</div>
@@ -167,8 +164,8 @@
         });
 
         let stream = null;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v11') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v11') || '0');
+        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v12') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v12') || '0');
         let currentGPS = { lat: 0, lon: 0 };
         let currentAddressString = "Ricerca via e città in corso...";
         let lastGeocodeTime = 0;
@@ -184,8 +181,7 @@
         const overlayCategory = document.getElementById('overlay-category');
         const overlayCoords = document.getElementById('overlay-coords');
         const fileUpload = document.getElementById('file-upload');
-        const liveMapThumb = document.getElementById('live-map-thumb');
-        const liveMapPlaceholder = document.getElementById('live-map-placeholder');
+        const liveMapCanvas = document.getElementById('live-map-canvas');
 
         function playShutterSound() {
             try {
@@ -205,9 +201,7 @@
                 
                 osc.start();
                 osc.stop(audioCtx.currentTime + 0.08);
-            } catch (e) {
-                console.log("Audio non supportato");
-            }
+            } catch (e) {}
         }
 
         const zoomBtns = document.querySelectorAll('.zoom-btn');
@@ -257,6 +251,57 @@
             }
         }
 
+        // FUNZIONE PER DISEGNARE LA MAPPA RADAR / GRIGLIA GPS
+        function drawRadarMapOnContext(targetCtx, width, height) {
+            // Sfondo scuro mappa
+            targetCtx.fillStyle = "#0f172a";
+            targetCtx.fillRect(0, 0, width, height);
+
+            // Griglia interna
+            targetCtx.strokeStyle = "#334155";
+            targetCtx.lineWidth = 1;
+            const step = width / 4;
+            for (let i = 0; i <= width; i += step) {
+                targetCtx.beginPath(); targetCtx.moveTo(i, 0); targetCtx.lineTo(i, height); targetCtx.stroke();
+                targetCtx.beginPath(); targetCtx.moveTo(0, i); targetCtx.lineTo(width, i); targetCtx.stroke();
+            }
+
+            // Cerchi radar concentrici
+            targetCtx.strokeStyle = "rgba(59, 130, 246, 0.4)";
+            targetCtx.beginPath();
+            targetCtx.arc(width / 2, height / 2, width * 0.25, 0, Math.PI * 2);
+            targetCtx.stroke();
+            targetCtx.beginPath();
+            targetCtx.arc(width / 2, height / 2, width * 0.45, 0, Math.PI * 2);
+            targetCtx.stroke();
+
+            // Croce centrale
+            targetCtx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+            targetCtx.beginPath();
+            targetCtx.moveTo(width / 2, 0); targetCtx.lineTo(width / 2, height);
+            targetCtx.moveTo(0, height / 2); targetCtx.lineTo(width, height / 2);
+            targetCtx.stroke();
+
+            // Punto centrale GPS (Pin rosso con alone)
+            targetCtx.fillStyle = "rgba(239, 68, 68, 0.3)";
+            targetCtx.beginPath();
+            targetCtx.arc(width / 2, height / 2, width * 0.15, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            targetCtx.fillStyle = "#ef4444";
+            targetCtx.beginPath();
+            targetCtx.arc(width / 2, height / 2, 6, 0, Math.PI * 2);
+            targetCtx.fill();
+            targetCtx.strokeStyle = "#ffffff";
+            targetCtx.lineWidth = 2;
+            targetCtx.stroke();
+        }
+
+        function updateLiveMapDisplay() {
+            const ctx = liveMapCanvas.getContext('2d');
+            drawRadarMapOnContext(ctx, liveMapCanvas.width, liveMapCanvas.height);
+        }
+
         function initGPS() {
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(async (position) => {
@@ -267,15 +312,8 @@
                     locationLabel.textContent = coordStr;
                     overlayCoords.textContent = coordStr;
                     
-                    // Aggiorna la miniatura live della mappa
-                    const rawMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=150x150&maptype=mapnik&markers=${currentGPS.lat},${currentGPS.lon},red-pushpin`;
-                    const proxyMapUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawMapUrl)}`;
-                    
-                    liveMapThumb.src = proxyMapUrl;
-                    liveMapThumb.onload = () => {
-                        liveMapThumb.classList.remove('hidden');
-                        liveMapPlaceholder.classList.add('hidden');
-                    };
+                    // Disegna la mappa radar live
+                    updateLiveMapDisplay();
 
                     const now = Date.now();
                     if (now - lastGeocodeTime > 7000) { 
@@ -313,63 +351,47 @@
             const panelH = Math.max(160, canvas.height * 0.18); 
             const panelY = canvas.height - panelH;
             
-            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
             ctx.fillRect(0, panelY, canvas.width, panelH);
             ctx.fillStyle = "rgba(255, 152, 0, 0.9)";
             ctx.fillRect(0, panelY, 15, panelH);
 
-            const mapImg = new Image();
-            mapImg.crossOrigin = "anonymous"; 
+            const mapSize = panelH * 0.8; 
+            const mapX = 30;
+            const mapY = panelY + (panelH - mapSize) / 2;
+
+            // Disegna la mappa radar direttamente sul canvas della foto
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = 200; tempCanvas.height = 200;
+            const tCtx = tempCanvas.getContext('2d');
+            drawRadarMapOnContext(tCtx, 200, 200);
+
+            ctx.drawImage(tempCanvas, mapX, mapY, mapSize, mapSize);
+            ctx.strokeStyle = "white";
+            ctx.lineWidth = 4;
+            ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+
+            const textX = mapX + mapSize + 30;
+            const baseFontSize = Math.max(16, canvas.width * 0.024);
+            const now = new Date();
             
-            if (currentGPS.lat !== 0 && currentGPS.lon !== 0) {
-                const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=200x200&maptype=mapnik&markers=${currentGPS.lat},${currentGPS.lon},red-pushpin`;
-                mapImg.src = `https://api.allorigins.win/raw?url=${encodeURIComponent(mapUrl)}`;
-            }
-
-            mapImg.onload = () => finishDrawingMap(mapImg);
-            mapImg.onerror = () => {
-                const fallbackCanvas = document.createElement("canvas");
-                fallbackCanvas.width = 200; fallbackCanvas.height = 200;
-                const fctx = fallbackCanvas.getContext("2d");
-                fctx.fillStyle = "#222"; fctx.fillRect(0, 0, 200, 200);
-                fctx.fillStyle = "#fff"; fctx.font = "20px Arial"; fctx.fillText("Mappa N/D", 50, 100);
-                finishDrawingMap(fallbackCanvas);
-            };
-
-            function finishDrawingMap(img) {
-                const mapSize = panelH * 0.8; 
-                const mapX = 30;
-                const mapY = panelY + (panelH - mapSize) / 2;
-
-                if (img) {
-                    ctx.drawImage(img, mapX, mapY, mapSize, mapSize);
-                }
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 4;
-                ctx.strokeRect(mapX, mapY, mapSize, mapSize);
-
-                const textX = mapX + mapSize + 30;
-                const baseFontSize = Math.max(16, canvas.width * 0.024);
-                const now = new Date();
-                
-                ctx.fillStyle = "white";
-                ctx.font = `bold ${baseFontSize * 1.3}px sans-serif`;
-                ctx.fillText(currentAddressString, textX, mapY + (mapSize * 0.25));
-                
-                ctx.font = `${baseFontSize}px monospace`;
-                ctx.fillStyle = "#e2e8f0";
-                ctx.fillText(`Lat: ${currentGPS.lat.toFixed(6)} | Lon: ${currentGPS.lon.toFixed(6)}`, textX, mapY + (mapSize * 0.50));
-                
-                ctx.fillStyle = "#fbbf24";
-                ctx.font = `bold ${baseFontSize * 0.9}px sans-serif`;
-                ctx.fillText(`Data: ${now.toLocaleDateString()}  Ora: ${now.toLocaleTimeString()}`, textX, mapY + (mapSize * 0.75));
-                
-                ctx.fillStyle = "#94a3b8";
-                ctx.font = `bold ${baseFontSize * 0.9}px sans-serif`;
-                ctx.fillText(`Cat: ${categorySelect.value}  |  Rif: #${photoCounter + 1}`, textX, mapY + (mapSize * 0.95));
-                
-                callback();
-            }
+            ctx.fillStyle = "white";
+            ctx.font = `bold ${baseFontSize * 1.3}px sans-serif`;
+            ctx.fillText(currentAddressString, textX, mapY + (mapSize * 0.25));
+            
+            ctx.font = `${baseFontSize}px monospace`;
+            ctx.fillStyle = "#e2e8f0";
+            ctx.fillText(`Lat: ${currentGPS.lat.toFixed(6)} | Lon: ${currentGPS.lon.toFixed(6)}`, textX, mapY + (mapSize * 0.50));
+            
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = `bold ${baseFontSize * 0.9}px sans-serif`;
+            ctx.fillText(`Data: ${now.toLocaleDateString()}  Ora: ${now.toLocaleTimeString()}`, textX, mapY + (mapSize * 0.75));
+            
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = `bold ${baseFontSize * 0.9}px sans-serif`;
+            ctx.fillText(`Cat: ${categorySelect.value}  |  Rif: #${photoCounter + 1}`, textX, mapY + (mapSize * 0.95));
+            
+            callback();
         }
 
         function finalizePhoto(canvas) {
@@ -387,8 +409,8 @@
                 info: `${currentAddressString} \nLat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)}`
             });
             
-            localStorage.setItem('gps_photos_pwa_v11', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_pwa_v11', photoCounter);
+            localStorage.setItem('gps_photos_pwa_v12', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_pwa_v12', photoCounter);
             updatePreviewUI();
         }
 
@@ -456,13 +478,13 @@
 
         function recalculateCounter() {
             photoCounter = photos.length === 0 ? 0 : Math.max(...photos.map(p => p.number));
-            localStorage.setItem('gps_photos_counter_pwa_v11', photoCounter);
+            localStorage.setItem('gps_photos_counter_pwa_v12', photoCounter);
         }
 
         document.getElementById('btn-reset-counter').addEventListener('click', () => {
             if (confirm("Azzerare la numerazione delle foto?")) { 
                 photoCounter = 0; 
-                localStorage.setItem('gps_photos_counter_pwa_v11', 0); 
+                localStorage.setItem('gps_photos_counter_pwa_v12', 0); 
                 updatePreviewUI(); 
             }
         });
@@ -489,7 +511,7 @@
             if(confirm("Sei sicuro di voler eliminare questa foto?")) {
                 photos = photos.filter(p => p.id !== currentActivePhotoId);
                 recalculateCounter();
-                localStorage.setItem('gps_photos_pwa_v11', JSON.stringify(photos));
+                localStorage.setItem('gps_photos_pwa_v12', JSON.stringify(photos));
                 document.getElementById('single-photo-modal').classList.add('hidden');
                 renderGallery();
                 updatePreviewUI();
@@ -557,7 +579,7 @@
             }
         }
 
-        window.onload = () => { initCamera(); initGPS(); updatePreviewUI(); };
+        window.onload = () => { initCamera(); initGPS(); updateLiveMapDisplay(); updatePreviewUI(); };
     </script>
 </body>
 </html>
