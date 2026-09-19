@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GPS Map Camera</title>
+    <title>GPS Map Camera PWA</title>
     
-    <!-- Web App Manifest embedded as a Data URL to ensure full installability in Chrome without external hosting issues -->
     <link rel="manifest" id="pwa-manifest">
     <meta name="theme-color" content="#1e40af">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -23,8 +22,7 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; }
-        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-        /* Custom scrollbar */
+        .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: #0f172a; }
         ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
@@ -33,32 +31,27 @@
 <body class="bg-slate-950 text-slate-100 h-full flex flex-col overflow-hidden">
 
     <script>
-        // Generate and inject the PWA manifest dynamically with custom SVG icon data URI matching your requested style
         const svgIconStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
             <defs>
                 <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                     <stop offset="0%" stop-color="#3b82f6"/>
                     <stop offset="100%" stop-color="#1d4ed8"/>
                 </linearGradient>
-                <linearGradient id="pinGrad" x1="0%" y1="0%" x2="0%\" y2="100%">
+                <linearGradient id="pinGrad" x1="0%" y1="0%" x2="0%" y2="100%">
                     <stop offset="0%" stop-color="#fbbf24"/>
                     <stop offset="100%" stop-color="#f97316"/>
                 </linearGradient>
             </defs>
             <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
-            <!-- Map grid background arc -->
             <path d="M 40 400 Q 256 320 472 400 L 472 472 Q 256 512 40 472 Z" fill="#0f172a" opacity="0.4"/>
             <path d="M 60 410 Q 256 340 452 410" stroke="#60a5fa" stroke-width="6" fill="none" opacity="0.6"/>
             <path d="M 120 370 L 220 480" stroke="#60a5fa" stroke-width="4" fill="none" opacity="0.5"/>
             <path d="M 280 350 L 380 470" stroke="#60a5fa" stroke-width="4" fill="none" opacity="0.5"/>
-            <!-- Corner framing brackets -->
             <path d="M 60 140 L 60 80 Q 60 60 80 60 L 140 60" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round"/>
             <path d="M 452 140 L 452 80 Q 452 60 432 60 L 372 60" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round"/>
             <path d="M 60 372 L 60 432 Q 60 452 80 452 L 140 452" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round"/>
             <path d="M 452 372 L 452 432 Q 452 452 432 452 L 372 452" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round"/>
-            <!-- Location Pin -->
             <path d="M 256 60 C 195 60 146 109 146 170 C 146 250 256 380 256 380 C 256 380 366 250 366 170 C 366 109 317 60 256 60 Z" fill="url(#pinGrad)" stroke="#ffffff" stroke-width="12"/>
-            <!-- Camera lens inside pin -->
             <circle cx="256" cy="170" r="64" fill="#0f172a" stroke="#cbd5e1" stroke-width="8"/>
             <circle cx="256" cy="170" r="44" fill="#1e293b"/>
             <circle cx="256" cy="170" r="24" fill="#3b82f6"/>
@@ -66,7 +59,6 @@
         </svg>`;
 
         const encodedSvg = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgIconStr)));
-
         const manifestData = {
             "name": "GPS Map Camera",
             "short_name": "GPS Camera",
@@ -74,30 +66,15 @@
             "display": "standalone",
             "background_color": "#0f172a",
             "theme_color": "#1e40af",
-            "icons": [
-                {
-                    "src": encodedSvg,
-                    "sizes": "512x512",
-                    "type": "image/svg+xml",
-                    "purpose": "any maskable"
-                }
-            ]
+            "icons": [{"src": encodedSvg, "sizes": "512x512", "type": "image/svg+xml", "purpose": "any maskable"}]
         };
 
         const manifestBlob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(manifestBlob);
-        document.getElementById('pwa-manifest').setAttribute('href', manifestURL);
+        document.getElementById('pwa-manifest').setAttribute('href', URL.createObjectURL(manifestBlob));
 
-        // Register dummy service worker via Blob to satisfy Chrome PWA install criteria fully
         if ('serviceWorker' in navigator) {
-            const swCode = `
-                self.addEventListener('install', (e) => { self.skipWaiting(); });
-                self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
-                self.addEventListener('fetch', (e) => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
-            `;
-            const swBlob = new Blob([swCode], {type: 'text/javascript'});
-            const swUrl = URL.createObjectURL(swBlob);
-            navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration error:', err));
+            const swCode = `self.addEventListener('install', e => self.skipWaiting()); self.addEventListener('activate', e => e.waitUntil(clients.claim())); self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => caches.match(e.request))));`;
+            navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], {type: 'text/javascript'}))).catch(() => {});
         }
     </script>
 
@@ -112,44 +89,46 @@
             </div>
             <div>
                 <h1 class="font-bold text-base leading-tight tracking-tight">GPS Map Camera</h1>
-                <p id="status-sub" class="text-xs text-slate-400">Acquisizione GPS attiva...</p>
+                <p id="status-sub" class="text-xs text-slate-400">GPS attivo • N. <span id="header-counter">1</span></p>
             </div>
         </div>
 
         <div class="flex items-center space-x-2">
-            <button id="install-btn" class="hidden bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs px-3 py-2 rounded-xl shadow-lg transition flex items-center space-x-1.5">
+            <button id="install-btn" class="hidden bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white font-medium text-xs px-3 py-2 rounded-xl shadow-lg transition flex items-center space-x-1.5">
                 <i class="fa-solid fa-download"></i>
-                <span>Installa App</span>
+                <span>Installa</span>
             </button>
             <button id="toggle-view-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl transition text-sm flex items-center space-x-2 border border-slate-700">
                 <i class="fa-solid fa-map-location-dot text-amber-400"></i>
                 <span class="hidden sm:inline">Mappa</span>
             </button>
-            <button id="settings-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl transition text-sm border border-slate-700">
-                <i class="fa-solid fa-gear"></i>
+            <button id="gallery-trigger-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl transition text-sm border border-slate-700 relative">
+                <i class="fa-solid fa-images"></i>
+                <span id="gallery-badge" class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center hidden">0</span>
             </button>
         </div>
     </header>
 
     <main class="flex-1 relative overflow-hidden flex flex-col md:flex-row">
         
-        <!-- Camera Section -->
         <div id="camera-container" class="flex-1 relative bg-black flex flex-col items-center justify-center overflow-hidden">
-            <!-- Video feed -->
             <video id="camera-preview" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
-            
-            <!-- Canvas for snapshot rendering -->
             <canvas id="photo-canvas" class="hidden"></canvas>
 
-            <!-- Live GPS Overlay Tag on Camera -->
-            <div id="camera-overlay-tag" class="absolute bottom-20 left-4 right-4 sm:left-6 sm:right-auto max-w-sm glass-panel p-3.5 rounded-2xl border border-slate-700/60 shadow-2xl pointer-events-none transition-all duration-300">
+            <!-- Live GPS & Details Overlay Tag -->
+            <div id="camera-overlay-tag" class="absolute bottom-24 left-4 right-4 sm:left-6 sm:right-auto max-w-sm glass-panel p-3.5 rounded-2xl border border-slate-700/60 shadow-2xl pointer-events-none transition-all duration-300">
                 <div class="flex items-start space-x-3">
                     <div class="bg-orange-500/20 text-orange-400 p-2.5 rounded-xl border border-orange-500/30 shrink-0">
                         <i class="fa-solid fa-location-dot text-lg"></i>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p id="overlay-address" class="text-xs font-semibold text-white truncate">Caricamento indirizzo...</p>
+                        <div class="flex items-center justify-between">
+                            <span id="overlay-category" class="bg-blue-600/80 text-white text-[10px] font-bold px-2 py-0.5 rounded-md">Taglio Erba</span>
+                            <span id="overlay-num" class="text-xs font-mono font-bold text-amber-400">#001</span>
+                        </div>
+                        <p id="overlay-address" class="text-xs font-semibold text-white truncate mt-1">Caricamento indirizzo...</p>
                         <p id="overlay-coords" class="text-[11px] font-mono text-slate-300 mt-0.5">LAT: --, LON: --</p>
+                        <p id="overlay-notes" class="text-[11px] text-slate-300 italic mt-0.5 truncate hidden">Nota: --</p>
                         <div class="flex items-center space-x-3 mt-1.5 text-[10px] text-slate-400">
                             <span id="overlay-alt"><i class="fa-solid fa-mountain mr-1"></i>Alt: -- m</span>
                             <span id="overlay-time"><i class="fa-solid fa-clock mr-1"></i>--:--:--</span>
@@ -158,26 +137,47 @@
                 </div>
             </div>
 
-            <!-- Camera Controls Bar -->
-            <div class="absolute bottom-4 left-0 right-0 flex items-center justify-around px-8 z-10">
-                <button id="switch-camera-btn" class="w-12 h-12 rounded-full glass-panel hover:bg-slate-800 text-white flex items-center justify-center border border-slate-700 shadow-lg transition">
-                    <i class="fa-solid fa-camera-rotate text-lg"></i>
-                </button>
-                
-                <button id="capture-btn" class="w-20 h-20 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 p-1.5 shadow-xl shadow-orange-500/30 transform active:scale-95 transition flex items-center justify-center">
-                    <div class="w-full h-full rounded-full border-4 border-white flex items-center justify-center bg-white/20">
-                        <div class="w-12 h-12 rounded-full bg-white shadow-inner"></div>
-                    </div>
-                </button>
+            <!-- Camera Controls Bar with Category and Notes Toolbar -->
+            <div class="absolute bottom-4 left-0 right-0 flex flex-col items-center px-4 space-y-2 z-10">
+                <!-- Toolbar for Category & Notes -->
+                <div class="glass-panel px-3 py-2 rounded-2xl border border-slate-800 flex flex-wrap items-center justify-center gap-2 max-w-lg w-full shadow-xl">
+                    <select id="category-select" class="bg-slate-900 border border-slate-700 text-xs text-white rounded-xl px-2.5 py-1.5 font-medium focus:outline-none focus:border-blue-500">
+                        <option value="Taglio Erba">🌱 Taglio Erba</option>
+                        <option value="Buche">🕳️ Buche</option>
+                        <option value="Segnaletica">🚏 Segnaletica</option>
+                        <option value="Altro">📌 Altro</option>
+                    </select>
 
-                <button id="gallery-trigger-btn" class="w-12 h-12 rounded-full glass-panel hover:bg-slate-800 text-white flex items-center justify-center border border-slate-700 shadow-lg transition relative">
-                    <i class="fa-solid fa-images text-lg"></i>
-                    <span id="gallery-badge" class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center hidden">0</span>
-                </button>
+                    <input type="text" id="note-input" placeholder="Aggiungi nota..." maxlength="60" class="bg-slate-900 border border-slate-700 text-xs text-white rounded-xl px-3 py-1.5 flex-1 min-w-[120px] focus:outline-none focus:border-blue-500">
+
+                    <div class="flex items-center space-x-1.5 bg-slate-900 px-2 py-1 rounded-xl border border-slate-700">
+                        <span class="text-[11px] text-slate-400 font-mono" id="counter-display">#1</span>
+                        <button id="reset-counter-btn" title="Azzera contatore" class="text-xs text-red-400 hover:text-red-300 p-1">
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Main Action Buttons -->
+                <div class="flex items-center justify-between w-full max-w-md px-4">
+                    <button id="switch-camera-btn" class="w-12 h-12 rounded-full glass-panel hover:bg-slate-800 text-white flex items-center justify-center border border-slate-700 shadow-lg transition">
+                        <i class="fa-solid fa-camera-rotate text-lg"></i>
+                    </button>
+                    
+                    <button id="capture-btn" class="w-20 h-20 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 p-1.5 shadow-xl shadow-orange-500/30 transform active:scale-95 transition flex items-center justify-center">
+                        <div class="w-full h-full rounded-full border-4 border-white flex items-center justify-center bg-white/20">
+                            <div class="w-12 h-12 rounded-full bg-white shadow-inner"></div>
+                        </div>
+                    </button>
+
+                    <button id="settings-btn" class="w-12 h-12 rounded-full glass-panel hover:bg-slate-800 text-white flex items-center justify-center border border-slate-700 shadow-lg transition">
+                        <i class="fa-solid fa-gear text-lg"></i>
+                    </button>
+                </div>
             </div>
         </div>
 
-        <!-- Map View Panel (Hidden by default or toggled) -->
+        <!-- Map View Panel -->
         <div id="map-panel" class="hidden md:w-96 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 z-10">
             <div class="p-3.5 border-b border-slate-800 flex items-center justify-between">
                 <h3 class="font-semibold text-sm flex items-center space-x-2">
@@ -205,25 +205,28 @@
                 <i class="fa-solid fa-xmark text-lg"></i>
             </button>
         </div>
-        <div id="gallery-grid" class="flex-1 p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-            <!-- Dynamic photos -->
-        </div>
-        <div class="p-4 bg-slate-900 border-t border-slate-800 text-center">
+        <div id="gallery-grid" class="flex-1 p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4"></div>
+        <div class="p-4 bg-slate-900 border-t border-slate-800 text-center flex justify-center space-x-4">
             <button id="clear-gallery-btn" class="text-xs text-red-400 hover:text-red-300 font-medium py-2 px-4 rounded-xl bg-red-500/10 border border-red-500/20">
-                Elimina Tutte le Foto
+                Elimina Tutte
             </button>
         </div>
     </div>
 
+    <!-- Preview & Share Modal -->
     <div id="preview-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden flex flex-col items-center justify-center p-4">
-        <div class="relative max-w-4xl w-full max-h-[80vh] flex flex-col items-center">
-            <img id="preview-img" src="" alt="Captured Photo" class="max-h-[70vh] w-auto rounded-2xl shadow-2xl border border-slate-800 object-contain">
-            <div class="flex items-center space-x-4 mt-6">
-                <a id="download-link" download="gps-map-photo.jpg" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-xl transition flex items-center space-x-2">
+        <div class="relative max-w-4xl w-full max-h-[85vh] flex flex-col items-center">
+            <img id="preview-img" src="" alt="Captured Photo" class="max-h-[68vh] w-auto rounded-2xl shadow-2xl border border-slate-800 object-contain">
+            <div class="flex flex-wrap items-center justify-center gap-3 mt-6">
+                <a id="download-link" download="gps-photo.jpg" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 text-white font-semibold text-xs px-5 py-3 rounded-xl shadow-xl transition flex items-center space-x-2">
                     <i class="fa-solid fa-download"></i>
                     <span>Scarica Foto</span>
                 </a>
-                <button id="close-preview-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-medium text-sm px-6 py-3 rounded-xl border border-slate-700 transition">
+                <button id="share-btn" class="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 text-white font-semibold text-xs px-5 py-3 rounded-xl shadow-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-share-nodes"></i>
+                    <span>Condividi</span>
+                </button>
+                <button id="close-preview-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-medium text-xs px-5 py-3 rounded-xl border border-slate-700 transition">
                     Chiudi
                 </button>
             </div>
@@ -235,86 +238,82 @@
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-bold text-lg flex items-center space-x-2">
                     <i class="fa-solid fa-gear text-blue-400"></i>
-                    <span>Impostazioni Overlay</span>
+                    <span>Impostazioni App</span>
                 </h3>
                 <button id="close-settings-btn" class="text-slate-400 hover:text-white">
                     <i class="fa-solid fa-xmark text-lg"></i>
                 </button>
             </div>
-            <div class="space-y-4 text-sm">
-                <div>
-                    <label class="block text-slate-300 font-medium mb-1">Stile del Timbro GPS</label>
-                    <select id="setting-template" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
-                        <option value="modern">Moderno (Trasparente con icona)</option>
-                        <option value="classic">Classico (Banner scuro in basso)</option>
-                        <option value="minimal">Minimale (Solo coordinate e ora)</option>
-                    </select>
+            <div class="space-y-4 text-sm text-slate-300">
+                <p>La PWA è configurata per il download automatico immediato e la numerazione progressiva ad ogni scatto.</p>
+                <div class="pt-2 border-t border-slate-800 flex justify-between items-center">
+                    <span>Stato Contatore Corrente:</span>
+                    <span id="settings-counter-val" class="font-bold text-amber-400">#1</span>
                 </div>
-                <div class="flex items-center justify-between pt-2">
-                    <span class="text-slate-300 font-medium">Mostra data e ora</span>
-                    <input type="checkbox" id="setting-show-time" checked class="w-5 h-5 accent-blue-600 rounded">
-                </div>
-                <div class="flex items-center justify-between pt-1">
-                    <span class="text-slate-300 font-medium">Mostra altitudine</span>
-                    <input type="checkbox" id="setting-show-alt" checked class="w-5 h-5 accent-blue-600 rounded">
-                </div>
-            </div>
-            <div class="mt-6 flex justify-end">
-                <button id="save-settings-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg transition">
-                    Salva Impostazioni
-                </button>
             </div>
         </div>
     </div>
 
-    <!-- Notification Toast -->
     <div id="toast" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-slate-900/90 border border-slate-700 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300 z-50">
-        Messaggio notifica
+        Messaggio
     </div>
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        // State management
         let currentStream = null;
         let useFrontCamera = false;
         let currentCoords = { lat: 41.9028, lon: 12.4964, alt: 15, accuracy: 5 };
         let currentAddress = "Roma, RM, Italia";
         let savedPhotos = JSON.parse(localStorage.getItem('gps_photos') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_counter') || '1', 10);
         let map = null;
         let marker = null;
         let deferredPrompt = null;
+        let lastBlobUrl = null;
 
-        // DOM Elements
         const videoElement = document.getElementById('camera-preview');
         const canvasElement = document.getElementById('photo-canvas');
         const captureBtn = document.getElementById('capture-btn');
         const switchCameraBtn = document.getElementById('switch-camera-btn');
         const toggleViewBtn = document.getElementById('toggle-view-btn');
         const mapPanel = document.getElementById('map-panel');
+        
+        const overlayCategory = document.getElementById('overlay-category');
+        const overlayNum = document.getElementById('overlay-num');
         const overlayAddress = document.getElementById('overlay-address');
         const overlayCoords = document.getElementById('overlay-coords');
         const overlayAlt = document.getElementById('overlay-alt');
         const overlayTime = document.getElementById('overlay-time');
+        const overlayNotes = document.getElementById('overlay-notes');
+
+        const categorySelect = document.getElementById('category-select');
+        const noteInput = document.getElementById('note-input');
+        const counterDisplay = document.getElementById('counter-display');
+        const resetCounterBtn = document.getElementById('reset-counter-btn');
+        const headerCounter = document.getElementById('header-counter');
+
         const galleryTriggerBtn = document.getElementById('gallery-trigger-btn');
         const galleryBadge = document.getElementById('gallery-badge');
         const galleryModal = document.getElementById('gallery-modal');
         const closeGalleryBtn = document.getElementById('close-gallery-btn');
         const galleryGrid = document.getElementById('gallery-grid');
         const clearGalleryBtn = document.getElementById('clear-gallery-btn');
+
         const previewModal = document.getElementById('preview-modal');
         const previewImg = document.getElementById('preview-img');
         const downloadLink = document.getElementById('download-link');
+        const shareBtn = document.getElementById('share-btn');
         const closePreviewBtn = document.getElementById('close-preview-btn');
+
         const settingsBtn = document.getElementById('settings-btn');
         const settingsModal = document.getElementById('settings-modal');
         const closeSettingsBtn = document.getElementById('close-settings-btn');
-        const saveSettingsBtn = document.getElementById('save-settings-btn');
         const installBtn = document.getElementById('install-btn');
         const toast = document.getElementById('toast');
 
-        // Initialize PWA install prompt handling
+        // PWA Install prompt
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
@@ -331,104 +330,104 @@
                 }
                 deferredPrompt = null;
             } else {
-                showToast("Per installare, usa il menu di Chrome e seleziona 'Aggiungi a schermata Home'");
+                showToast("Usa il menu di Chrome e seleziona 'Aggiungi a schermata Home'");
+            }
+        });
+
+        function updateCounterUI() {
+            const formattedNum = `#${String(photoCounter).padStart(3, '0')}`;
+            counterDisplay.textContent = formattedNum;
+            overlayNum.textContent = formattedNum;
+            headerCounter.textContent = photoCounter;
+            document.getElementById('settings-counter-val').textContent = formattedNum;
+            localStorage.setItem('gps_counter', photoCounter);
+        }
+
+        resetCounterBtn.addEventListener('click', () => {
+            if (confirm('Vuoi azzerare il contatore progressivo delle foto a 1?')) {
+                photoCounter = 1;
+                updateCounterUI();
+                showToast('Contatore azzerato');
+            }
+        });
+
+        categorySelect.addEventListener('change', () => {
+            overlayCategory.textContent = categorySelect.value;
+        });
+
+        noteInput.addEventListener('input', () => {
+            const val = noteInput.value.trim();
+            if (val) {
+                overlayNotes.textContent = `Nota: ${val}`;
+                overlayNotes.classList.remove('hidden');
+            } else {
+                overlayNotes.classList.add('hidden');
             }
         });
 
         // Initialize Camera
         async function initCamera() {
-            if (currentStream) {
-                currentStream.getTracks().forEach(track => track.stop());
-            }
-            const constraints = {
-                video: {
-                    facingMode: useFrontCamera ? 'user' : 'environment',
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                },
-                audio: false
-            };
+            if (currentStream) currentStream.getTracks().forEach(t => t.stop());
             try {
-                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                currentStream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: useFrontCamera ? 'user' : 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } },
+                    audio: false
+                });
                 videoElement.srcObject = currentStream;
             } catch (err) {
-                console.error("Camera access error:", err);
-                showToast("Errore accesso fotocamera. Verifica i permessi.");
+                showToast("Errore accesso fotocamera.");
             }
         }
 
-        // Initialize GPS Geolocation & Reverse Geocoding
+        // Initialize GPS
         function initGPS() {
             if ('geolocation' in navigator) {
-                navigator.geolocation.watchPosition(
-                    async (position) => {
-                        currentCoords.lat = position.coords.latitude;
-                        currentCoords.lon = position.coords.longitude;
-                        currentCoords.alt = position.coords.altitude ? Math.round(position.coords.altitude) : 25;
-                        currentCoords.accuracy = Math.round(position.coords.accuracy);
+                navigator.geolocation.watchPosition(async (pos) => {
+                    currentCoords.lat = pos.coords.latitude;
+                    currentCoords.lon = pos.coords.longitude;
+                    currentCoords.alt = pos.coords.altitude ? Math.round(pos.coords.altitude) : 20;
+                    currentCoords.accuracy = Math.round(pos.coords.accuracy);
 
-                        updateOverlayDisplay();
-                        updateMapPosition();
+                    updateOverlayDisplay();
+                    updateMapPosition();
 
-                        // Fetch reverse geocoding address
-                        try {
-                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.lat}&lon=${currentCoords.lon}`);
-                            const data = await res.json();
-                            if (data && data.display_name) {
-                                const parts = data.display_name.split(',');
-                                currentAddress = parts.slice(0, 3).join(',').trim();
-                                overlayAddress.textContent = currentAddress;
-                            }
-                        } catch (e) {
-                            console.error("Geocoding fetch error:", e);
+                    try {
+                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.lat}&lon=${currentCoords.lon}`);
+                        const data = await res.json();
+                        if (data && data.display_name) {
+                            currentAddress = data.display_name.split(',').slice(0, 3).join(',').trim();
+                            overlayAddress.textContent = currentAddress;
                         }
-                    },
-                    (error) => {
-                        console.error("GPS error:", error);
-                        document.getElementById('status-sub').textContent = "GPS non disponibile (usando default)";
-                    },
-                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
-                );
-            } else {
-                showToast("Geolocalizzazione non supportata dal browser");
+                    } catch (e) {}
+                }, () => {}, { enableHighAccuracy: true, maximumAge: 10000 });
             }
         }
 
-        // Update live overlay data
         function updateOverlayDisplay() {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString();
-            const dateStr = now.toLocaleDateString();
-
             overlayCoords.textContent = `LAT: ${currentCoords.lat.toFixed(6)}, LON: ${currentCoords.lon.toFixed(6)}`;
             overlayAlt.innerHTML = `<i class="fa-solid fa-mountain mr-1"></i>Alt: ${currentCoords.alt}m`;
-            overlayTime.innerHTML = `<i class="fa-solid fa-clock mr-1"></i>${dateStr} ${timeStr}`;
+            overlayTime.innerHTML = `<i class="fa-solid fa-clock mr-1"></i>${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
             document.getElementById('map-coords-text').textContent = `GPS: ${currentCoords.lat.toFixed(4)}, ${currentCoords.lon.toFixed(4)}`;
             document.getElementById('gps-accuracy').textContent = `Precisione: ±${currentCoords.accuracy}m`;
         }
         setInterval(updateOverlayDisplay, 1000);
 
-        // Initialize Leaflet Map
         function initMap() {
             if (!map) {
                 map = L.map('leaflet-map', { zoomControl: false }).setView([currentCoords.lat, currentCoords.lon], 16);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    maxZoom: 19,
-                    attribution: '&copy; OpenStreetMap'
-                }).addTo(map);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
                 marker = L.marker([currentCoords.lat, currentCoords.lon]).addTo(map);
             }
         }
 
         function updateMapPosition() {
             if (map && marker) {
-                const newLatLng = [currentCoords.lat, currentCoords.lon];
-                marker.setLatLng(newLatLng);
-                map.setView(newLatLng, map.getZoom(), { animate: true });
+                marker.setLatLng([currentCoords.lat, currentCoords.lon]);
+                map.setView([currentCoords.lat, currentCoords.lon], map.getZoom(), { animate: true });
             }
         }
 
-        // Toggle Map / Camera view on mobile
         let mapVisible = false;
         toggleViewBtn.addEventListener('click', () => {
             mapVisible = !mapVisible;
@@ -446,13 +445,12 @@
             if (map) map.setView([currentCoords.lat, currentCoords.lon], 17, { animate: true });
         });
 
-        // Switch Camera facing mode
         switchCameraBtn.addEventListener('click', () => {
             useFrontCamera = !useFrontCamera;
             initCamera();
         });
 
-        // Capture Photo with Embedded GPS Map Watermark
+        // Capture Photo & Automatic Download
         captureBtn.addEventListener('click', () => {
             const video = videoElement;
             const canvas = canvasElement;
@@ -460,66 +458,104 @@
             canvas.height = video.videoHeight || 720;
             const ctx = canvas.getContext('2d');
 
-            // Draw video frame
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            // Draw GPS Watermark banner at bottom
-            const gradientHeight = 160;
+            // Watermark layout
+            const gradientHeight = 180;
             const yStart = canvas.height - gradientHeight;
-            
             const grad = ctx.createLinearGradient(0, yStart, 0, canvas.height);
             grad.addColorStop(0, 'rgba(15, 23, 42, 0)');
-            grad.addColorStop(0.3, 'rgba(15, 23, 42, 0.85)');
-            grad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+            grad.addColorStop(0.3, 'rgba(15, 23, 42, 0.88)');
+            grad.addColorStop(1, 'rgba(15, 23, 42, 0.96)');
             ctx.fillStyle = grad;
             ctx.fillRect(0, yStart, canvas.width, gradientHeight);
 
-            // Draw Map Mini thumbnail representation / GPS Icon
-            ctx.fillStyle = '#f97316';
+            // Category & Number badge on photo
+            ctx.fillStyle = '#2563eb';
             ctx.beginPath();
-            ctx.arc(60, yStart + 80, 28, 0, Math.PI * 2);
+            ctx.roundRect(60, yStart + 25, 140, 32, 8);
             ctx.fill();
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 24px Inter, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText('📍', 60, yStart + 80);
+            ctx.font = 'bold 16px Inter, sans-serif';
+            ctx.fillText(`${categorySelect.value} #${String(photoCounter).padStart(3, '0')}`, 75, yStart + 46);
 
-            // Draw text details
-            ctx.textAlign = 'left';
+            // Text details
+            ctx.font = 'bold 20px Inter, sans-serif';
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 22px Inter, sans-serif';
-            ctx.fillText(currentAddress, 110, yStart + 55);
+            ctx.fillText(currentAddress, 60, yStart + 85);
 
             ctx.fillStyle = '#94a3b8';
-            ctx.font = '18px Inter, sans-serif';
-            ctx.fillText(`LAT: ${currentCoords.lat.toFixed(6)}, LON: ${currentCoords.lon.toFixed(6)}`, 110, yStart + 90);
+            ctx.font = '16px Inter, sans-serif';
+            ctx.fillText(`LAT: ${currentCoords.lat.toFixed(6)}, LON: ${currentCoords.lon.toFixed(6)}  |  Alt: ${currentCoords.alt}m`, 60, yStart + 115);
+
+            const noteVal = noteInput.value.trim();
+            let textOffset = 145;
+            if (noteVal) {
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'italic 16px Inter, sans-serif';
+                ctx.fillText(`Nota: ${noteVal}`, 60, yStart + 145);
+                textOffset = 170;
+            }
 
             const nowStr = new Date().toLocaleString();
-            ctx.font = '16px Inter, sans-serif';
+            ctx.font = '14px Inter, sans-serif';
             ctx.fillStyle = '#cbd5e1';
-            ctx.fillText(`Altitudine: ${currentCoords.alt}m  |  Data: ${nowStr}`, 110, yStart + 125);
+            ctx.fillText(`Data: ${nowStr}`, 60, yStart + textOffset);
 
             const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
             
+            // Automatic Download Trigger
+            const filename = `GPS_${categorySelect.value.replace(/\s+/g, '_')}_${photoCounter}_${Date.now()}.jpg`;
+            const a = document.createElement('a');
+            a.href = dataUrl;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
             // Save to storage
             const photoObj = {
                 id: Date.now(),
                 url: dataUrl,
                 date: nowStr,
                 address: currentAddress,
+                category: categorySelect.value,
+                number: photoCounter,
+                note: noteVal,
                 coords: `${currentCoords.lat.toFixed(4)}, ${currentCoords.lon.toFixed(4)}`
             };
             savedPhotos.unshift(photoObj);
             localStorage.setItem('gps_photos', JSON.stringify(savedPhotos));
             updateGalleryBadge();
-            showToast('Foto catturata con timbro GPS!');
 
-            // Show preview
-            openPreview(dataUrl);
+            // Increment counter
+            photoCounter++;
+            updateCounterUI();
+
+            showToast('Foto scattata e scaricata automaticamente!');
+            openPreview(dataUrl, photoObj);
         });
 
-        // Gallery Management
+        // Web Share API Integration
+        shareBtn.addEventListener('click', async () => {
+            if (navigator.share && lastBlobUrl) {
+                try {
+                    const response = await fetch(lastBlobUrl);
+                    const blob = await response.blob();
+                    const file = new File([blob], "gps_photo.jpg", { type: "image/jpeg" });
+                    await navigator.share({
+                        title: 'GPS Map Camera Photo',
+                        text: `Condiviso da GPS Map Camera - ${categorySelect.value}`,
+                        files: [file]
+                    });
+                } catch (err) {
+                    console.log('Share error or canceled:', err);
+                }
+            } else {
+                showToast('Condivisione non supportata o file non disponibile');
+            }
+        });
+
         function updateGalleryBadge() {
             if (savedPhotos.length > 0) {
                 galleryBadge.textContent = savedPhotos.length;
@@ -534,9 +570,7 @@
             galleryModal.classList.remove('hidden');
         });
 
-        closeGalleryBtn.addEventListener('click', () => {
-            galleryModal.classList.add('hidden');
-        });
+        closeGalleryBtn.addEventListener('click', () => galleryModal.classList.add('hidden'));
 
         function renderGalleryGrid() {
             galleryGrid.innerHTML = '';
@@ -551,11 +585,11 @@
                 div.innerHTML = `
                     <img src="${photo.url}" alt="Saved photo" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-2.5">
-                        <p class="text-[10px] font-medium text-white truncate">${photo.address}</p>
-                        <p class="text-[9px] text-slate-300">${photo.date}</p>
+                        <span class="text-[10px] font-bold text-amber-400">${photo.category} #${photo.number}</span>
+                        <p class="text-[10px] text-white truncate">${photo.address}</p>
                     </div>
                 `;
-                div.addEventListener('click', () => openPreview(photo.url));
+                div.addEventListener('click', () => openPreview(photo.url, photo));
                 galleryGrid.appendChild(div);
             });
         }
@@ -570,39 +604,31 @@
             }
         });
 
-        function openPreview(url) {
+        function openPreview(url, photoObj) {
+            lastBlobUrl = url;
             previewImg.src = url;
             downloadLink.href = url;
+            downloadLink.download = `GPS_${photoObj ? photoObj.category : 'Photo'}_${Date.now()}.jpg`;
             previewModal.classList.remove('hidden');
         }
 
-        closePreviewBtn.addEventListener('click', () => {
-            previewModal.classList.add('hidden');
-        });
+        closePreviewBtn.addEventListener('click', () => previewModal.classList.add('hidden'));
 
-        // Settings Modal
         settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
         closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
-        saveSettingsBtn.addEventListener('click', () => {
-            settingsModal.classList.add('hidden');
-            showToast('Impostazioni salvate');
-        });
 
-        // Toast Helper
         function showToast(msg) {
             toast.textContent = msg;
             toast.classList.remove('opacity-0', 'pointer-events-none');
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'pointer-events-none');
-            }, 3000);
+            setTimeout(() => toast.classList.add('opacity-0', 'pointer-events-none'), 3000);
         }
 
-        // On window load
         window.onload = () => {
             initCamera();
             initGPS();
             initMap();
             updateGalleryBadge();
+            updateCounterUI();
         };
     </script>
 </body>
