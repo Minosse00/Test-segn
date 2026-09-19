@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>GPS Map Camera SP</title>
+    <title>GPS Map Camera SP - Frontale</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -15,7 +15,7 @@
             overflow: hidden;
             background-color: #030712;
             color: #ffffff;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             position: fixed;
         }
         * {
@@ -29,26 +29,45 @@
     <header class="w-full bg-gray-900/95 backdrop-blur-md px-3 py-2 border-b border-gray-800 flex justify-between items-center z-10 shrink-0">
         <div class="overflow-hidden pr-2 flex-1">
             <h1 class="text-xs font-bold tracking-wide text-amber-400 flex items-center gap-1.5 truncate">
-                <i class="fa-solid fa-road text-[11px] shrink-0"></i> <span id="sp-label" class="truncate">Ricerca Strada...</span>
+                <i class="fa-solid fa-road text-[11px] shrink-0"></i> <span id="sp-label" class="truncate">Tratto ordinario</span>
             </h1>
             <p class="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5 truncate">
                 <i class="fa-solid fa-location-dot text-red-500 text-[10px] shrink-0"></i> <span id="location-label" class="truncate">Localizzazione in corso...</span>
             </p>
         </div>
-        <div id="offline-badge" class="hidden bg-red-600/20 text-red-400 border border-red-500/35 text-[9px] px-2 py-0.5 rounded-full font-semibold shrink-0">
-            OFFLINE
+        <div class="flex items-center gap-2 shrink-0">
+            <!-- TASTO RESET NUMERAZIONE -->
+            <button id="btn-reset-counter" class="bg-gray-800 hover:bg-gray-700 text-amber-400 border border-gray-700 text-[10px] px-2 py-1 rounded-lg font-medium flex items-center gap-1 active:scale-95 transition" title="Resetta contatore foto">
+                <i class="fa-solid fa-rotate-right"></i> Reset #
+            </button>
+            <div id="offline-badge" class="hidden bg-red-600/20 text-red-400 border border-red-500/35 text-[9px] px-2 py-0.5 rounded-full font-semibold">
+                OFFLINE
+            </div>
         </div>
     </header>
 
-    <!-- VIEWPORT FOTOCAMERA -->
+    <!-- BARRA SELEZIONE CATEGORIA (Taglio Erba, Buche, Segnaletica, Altro) -->
+    <div class="bg-gray-900/80 px-3 py-1.5 border-b border-gray-800/80 z-10 shrink-0 flex items-center gap-2">
+        <span class="text-[10px] text-gray-400 font-medium shrink-0"><i class="fa-solid fa-tag text-amber-400"></i> Categoria:</span>
+        <select id="category-select" class="w-full bg-gray-800 text-amber-300 text-xs font-semibold rounded-lg px-2 py-1 border border-gray-700 focus:outline-none focus:border-amber-500">
+            <option value="Taglio Erba">Taglio Erba</option>
+            <option value="Buche">Buche</option>
+            <option value="Segnaletica">Segnaletica</option>
+            <option value="Altro" selected>Altro</option>
+        </select>
+    </div>
+
+    <!-- VIEWPORT FOTOCAMERA (FRONTALE) -->
     <main class="relative w-full flex-1 bg-black flex items-center justify-center overflow-hidden">
-        <video id="camera-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
+        <!-- Specchiata in anteprima live per comodità d'uso della camera frontale -->
+        <video id="camera-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover -scale-x-100"></video>
         <canvas id="photo-canvas" class="hidden"></canvas>
 
         <!-- OVERLAY DATI SU FOTO / ANTEPRIMA LIVE -->
         <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
-            <div id="overlay-box" class="bg-black/60 backdrop-blur-md p-2 rounded-lg border border-white/15 max-w-[280px] text-[10px] space-y-0.5 shadow-lg">
-                <div class="font-bold text-amber-300 truncate hidden" id="overlay-sp">--</div>
+            <div id="overlay-box" class="bg-black/65 backdrop-blur-md p-2 rounded-lg border border-white/15 max-w-[280px] text-[10px] space-y-0.5 shadow-lg">
+                <div class="font-bold text-amber-300 truncate" id="overlay-category">Categoria: Altro</div>
+                <div class="font-bold text-amber-400 truncate hidden" id="overlay-sp">--</div>
                 <div class="text-gray-100 truncate" id="overlay-addr">Indirizzo: Rilevamento...</div>
                 <div class="text-gray-300 text-[9px]" id="overlay-coords">Lat: 0.0000, Lon: 0.0000</div>
                 <div class="text-gray-400 text-[9px]" id="overlay-date">Data: --/--/---- --:--</div>
@@ -57,7 +76,7 @@
     </main>
 
     <!-- CONTROLLI INFERIORI -->
-    <footer class="w-full bg-gray-900 px-4 py-2.5 flex items-center justify-around border-t border-gray-800 z-10 shrink-0">
+    <footer class="w-full bg-gray-900 px-6 py-3 flex items-center justify-between border-t border-gray-800 z-10 shrink-0">
         <!-- ANTEPRIMA FOTO -->
         <button id="btn-gallery-open" class="relative w-12 h-12 rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden focus:outline-none shadow-lg active:scale-95 transition shrink-0 flex items-center justify-center">
             <img id="preview-thumb" src="" alt="" class="w-full h-full object-cover hidden">
@@ -72,10 +91,8 @@
             <div class="bg-white rounded-full w-[52px] h-[52px]"></div>
         </button>
 
-        <!-- CAMBIA FOTOCAMERA -->
-        <button id="btn-switch-camera" class="w-12 h-12 rounded-full bg-gray-800 text-gray-300 flex items-center justify-center focus:outline-none hover:bg-gray-700 active:scale-95 transition shrink-0">
-            <i class="fa-solid fa-rotate-camera text-base"></i>
-        </button>
+        <!-- SPAZIATORE PER BILANCIARE IL LAYOUT -->
+        <div class="w-12"></div>
     </footer>
 
     <!-- MODALE GALLERIA -->
@@ -113,9 +130,8 @@
     <!-- SCRIPT LOGICA APPLICATIVA -->
     <script>
         let stream = null;
-        let useFrontCamera = false;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_sp') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter') || '0');
+        let photos = JSON.parse(localStorage.getItem('gps_photos_sp_front') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_front') || '0');
         let isSelectionMode = false;
         let selectedPhotoIds = new Set();
         let currentGPS = { lat: 0, lon: 0, address: "Rilevamento...", sp: null };
@@ -125,8 +141,10 @@
         const spLabel = document.getElementById('sp-label');
         const locationLabel = document.getElementById('location-label');
         const offlineBadge = document.getElementById('offline-badge');
+        const categorySelect = document.getElementById('category-select');
         
         const overlayBox = document.getElementById('overlay-box');
+        const overlayCategory = document.getElementById('overlay-category');
         const overlaySp = document.getElementById('overlay-sp');
         const overlayAddr = document.getElementById('overlay-addr');
         const overlayCoords = document.getElementById('overlay-coords');
@@ -136,6 +154,7 @@
         const previewPlaceholder = document.getElementById('preview-placeholder');
         const photoCounterBadge = document.getElementById('photo-counter-badge');
 
+        // Avvio Fotocamera Forzata Frontale (user)
         async function initCamera() {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
@@ -143,7 +162,7 @@
             try {
                 const constraints = {
                     video: {
-                        facingMode: useFrontCamera ? "user" : { exact: "environment" },
+                        facingMode: "user",
                         width: { ideal: 1280 },
                         height: { ideal: 720 }
                     }
@@ -152,10 +171,10 @@
                 videoElem.srcObject = stream;
             } catch (err) {
                 try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? "user" : "environment" } });
+                    stream = await navigator.mediaDevices.getUserMedia({ video: true });
                     videoElem.srcObject = stream;
                 } catch (e) {
-                    alert("Impossibile accedere alla fotocamera posteriore. Controlla i permessi.");
+                    alert("Impossibile accedere alla fotocamera frontale. Controlla i permessi.");
                 }
             }
         }
@@ -180,12 +199,12 @@
                         
                         currentGPS.address = `${city} ${road ? '(' + road + ')' : ''}`;
 
-                        // Rilevamento effettivo SP (es. SP1, Strada Provinciale 20, SR, ecc.)
+                        // Rilevamento effettivo SP
                         const upperRoad = road.toUpperCase();
                         if (upperRoad.includes("SP ") || upperRoad.includes("STRADA PROVINCIALE") || upperRoad.startsWith("SP") || upperRoad.includes("SR ")) {
                             currentGPS.sp = road;
                         } else {
-                            currentGPS.sp = null; // Nessuna SP rilevata effettivamente
+                            currentGPS.sp = null;
                         }
                     }
                 } catch(e) {
@@ -193,10 +212,8 @@
                     currentGPS.sp = null;
                 }
 
-                // Aggiornamento interfaccia in base alla presenza o meno della SP
                 if (currentGPS.sp) {
                     spLabel.textContent = currentGPS.sp;
-                    spLabel.parentElement.classList.remove('hidden');
                     overlaySp.textContent = currentGPS.sp;
                     overlaySp.classList.remove('hidden');
                 } else {
@@ -209,6 +226,20 @@
                 locationLabel.textContent = "Segnale GPS assente";
             }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
         }
+
+        // Aggiornamento live categoria su overlay
+        categorySelect.addEventListener('change', () => {
+            overlayCategory.textContent = `Categoria: ${categorySelect.value}`;
+        });
+
+        // Tasto Reset Contatore
+        document.getElementById('btn-reset-counter').addEventListener('click', () => {
+            if (confirm("Vuoi azzerare la numerazione progressiva delle foto?")) {
+                photoCounter = 0;
+                localStorage.setItem('gps_photos_counter_front', 0);
+                updatePreviewUI();
+            }
+        });
 
         function updateNetworkStatus() {
             if (navigator.onLine) {
@@ -225,22 +256,32 @@
             overlayDate.textContent = `Data: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
         }, 1000);
 
+        // Scatto foto con camera frontale (inverte la canvas per mantenere la foto dritta e non specchiata)
         document.getElementById('btn-capture').addEventListener('click', () => {
             const canvas = canvasElem;
             canvas.width = videoElem.videoWidth || 1280;
             canvas.height = videoElem.videoHeight || 720;
             const ctx = canvas.getContext('2d');
             
-            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+            ctx.save();
+            // Despecchia l'immagine salvata rispetto alla preview live frontale
+            ctx.scale(-1, 1);
+            ctx.drawImage(videoElem, -canvas.width, 0, canvas.width, canvas.height);
+            ctx.restore();
 
-            // Stampa overlay su foto
-            ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-            ctx.fillRect(20, canvas.height - 180, 520, currentGPS.sp ? 150 : 120);
+            const selectedCategory = categorySelect.value;
+
+            // Stampa overlay completo su foto
+            ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+            ctx.fillRect(20, canvas.height - 210, 560, currentGPS.sp ? 180 : 150);
             
-            let textY = canvas.height - 135;
+            let textY = canvas.height - 170;
+            ctx.fillStyle = "#F59E0B";
+            ctx.font = "bold 24px sans-serif";
+            ctx.fillText(`[ ${selectedCategory.toUpperCase()} ] #${photoCounter + 1}`, 40, textY);
+            textY += 35;
+
             if (currentGPS.sp) {
-                ctx.fillStyle = "#F59E0B";
-                ctx.font = "bold 24px sans-serif";
                 ctx.fillText(currentGPS.sp, 40, textY);
                 textY += 35;
             }
@@ -257,10 +298,11 @@
             const photoObj = {
                 id: 'photo_' + Date.now(),
                 number: photoCounter,
+                category: selectedCategory,
                 dateStr: now.toLocaleDateString(),
                 timestamp: now.toISOString(),
                 data: dataUrl,
-                info: `${currentGPS.sp ? currentGPS.sp + ' - ' : ''}${currentGPS.address}`
+                info: `${selectedCategory} - ${currentGPS.sp ? currentGPS.sp + ' - ' : ''}${currentGPS.address}`
             };
 
             photos.unshift(photoObj);
@@ -272,8 +314,8 @@
         });
 
         function saveDataToStorage() {
-            localStorage.setItem('gps_photos_sp', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter', photoCounter);
+            localStorage.setItem('gps_photos_sp_front', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_front', photoCounter);
         }
 
         function updatePreviewUI() {
@@ -286,15 +328,10 @@
                 previewThumb.classList.add('hidden');
                 previewPlaceholder.classList.remove('hidden');
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter', 0);
+                localStorage.setItem('gps_photos_counter_front', 0);
                 photoCounterBadge.textContent = 0;
             }
         }
-
-        document.getElementById('btn-switch-camera').addEventListener('click', () => {
-            useFrontCamera = !useFrontCamera;
-            initCamera();
-        });
 
         const galleryModal = document.getElementById('gallery-modal');
         document.getElementById('btn-gallery-open').addEventListener('click', () => {
@@ -336,6 +373,7 @@
                     item.innerHTML = `
                         <img src="${photo.data}" class="w-full h-full object-cover">
                         <div class="absolute top-0.5 left-0.5 bg-black/70 text-white text-[9px] font-bold px-1 py-0.5 rounded">#${photo.number}</div>
+                        <div class="absolute bottom-0.5 right-0.5 bg-amber-500/90 text-black text-[8px] font-bold px-1 rounded truncate max-w-[80%]">${photo.category || 'Altro'}</div>
                         ${isSelectionMode ? `<div class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full border border-white flex items-center justify-center ${selectedPhotoIds.has(photo.id) ? 'bg-amber-500 text-black' : 'bg-black/40'}"><i class="fa-solid fa-check text-[9px] ${selectedPhotoIds.has(photo.id) ? '' : 'hidden'}"></i></div>` : ''}
                     `;
                     
@@ -349,7 +387,7 @@
                             renderGallery();
                             updateSelectionToolbar();
                         } else {
-                            alert(`Foto #${photo.number}\n${photo.info}`);
+                            alert(`Foto #${photo.number} [${photo.category}]\n${photo.info}`);
                         }
                     });
                     grid.appendChild(item);
@@ -398,6 +436,7 @@
                 
                 if (photos.length === 0) {
                     photoCounter = 0;
+                    localStorage.setItem('gps_photos_counter_front', 0);
                 }
                 
                 saveDataToStorage();
@@ -414,7 +453,7 @@
                     let filesArray = [];
                     for (let p of selectedPhotos) {
                         const blob = await (await fetch(p.data)).blob();
-                        filesArray.push(new File([blob], `Foto_SP_${p.number}.jpg`, { type: 'image/jpeg' }));
+                        filesArray.push(new File([blob], `Foto_${p.category}_${p.number}.jpg`, { type: 'image/jpeg' }));
                     }
                     if (navigator.canShare && navigator.canShare({ files: filesArray })) {
                         await navigator.share({
