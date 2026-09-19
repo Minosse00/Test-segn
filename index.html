@@ -17,6 +17,10 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- LEAFLET CSS PER LA MAPPA VERA -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
         html, body {
             width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
@@ -26,6 +30,8 @@
         }
         * { box-sizing: border-box; }
         ::-webkit-scrollbar { display: none; }
+        /* Rimuovi i controlli di Leaflet dalla miniatura per renderla pulita */
+        .leaflet-control-container { display: none !important; }
     </style>
 </head>
 <body class="flex flex-col select-none">
@@ -59,10 +65,11 @@
             <button class="zoom-btn w-9 h-9 rounded-full font-bold text-xs transition-colors bg-gray-700 text-white border border-gray-600 active:scale-90" data-zoom="2">2x</button>
         </div>
 
-        <!-- BOX OVERLAY CON MAPPA RADAR LIVE INTERNA -->
+        <!-- BOX OVERLAY CON MINIATURA MAPPA REALE (LEAFLET) -->
         <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
-            <div id="overlay-box" class="bg-black/85 backdrop-blur-md p-2.5 rounded-lg border border-white/15 max-w-[340px] shadow-2xl flex items-center gap-2.5">
-                <canvas id="live-map-canvas" width="120" height="120" class="w-14 h-14 rounded bg-gray-900 border border-white/30 shrink-0"></canvas>
+            <div id="overlay-box" class="bg-black/85 backdrop-blur-md p-2.5 rounded-lg border border-white/15 max-w-[340px] shadow-2xl flex items-center gap-2.5 pointer-events-auto">
+                <!-- Contenitore della vera mappa -->
+                <div id="live-map-thumb" class="w-14 h-14 rounded bg-gray-800 border border-white/30 overflow-hidden shrink-0 z-0"></div>
                 <div class="overflow-hidden space-y-0.5 flex-1 text-[10px]">
                     <div class="font-bold text-amber-300 truncate text-[11px]" id="overlay-category">Taglio erba</div>
                     <div class="text-white truncate font-bold" id="overlay-addr">Ricerca via e città in corso...</div>
@@ -142,6 +149,9 @@
         </div>
     </div>
 
+    <!-- LEAFLET JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('./sw.js').catch(console.error);
@@ -164,9 +174,9 @@
         });
 
         let stream = null;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v12') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v12') || '0');
-        let currentGPS = { lat: 0, lon: 0 };
+        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v13') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v13') || '0');
+        let currentGPS = { lat: 41.9028, lon: 12.4964 }; // Default Roma in attesa del GPS
         let currentAddressString = "Ricerca via e città in corso...";
         let lastGeocodeTime = 0;
         let currentActivePhotoId = null;
@@ -181,7 +191,23 @@
         const overlayCategory = document.getElementById('overlay-category');
         const overlayCoords = document.getElementById('overlay-coords');
         const fileUpload = document.getElementById('file-upload');
-        const liveMapCanvas = document.getElementById('live-map-canvas');
+
+        // INIZIALIZZAZIONE MAPPA LEAFLET LIVE NELLA MINIATURA
+        const liveMap = L.map('live-map-thumb', {
+            zoomControl: false,
+            attributionControl: false,
+            dragging: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            keyboard: false
+        }).setView([currentGPS.lat, currentGPS.lon], 15);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19
+        }).addTo(liveMap);
+
+        const liveMarker = L.marker([currentGPS.lat, currentGPS.lon]).addTo(liveMap);
 
         function playShutterSound() {
             try {
@@ -251,57 +277,6 @@
             }
         }
 
-        // FUNZIONE PER DISEGNARE LA MAPPA RADAR / GRIGLIA GPS
-        function drawRadarMapOnContext(targetCtx, width, height) {
-            // Sfondo scuro mappa
-            targetCtx.fillStyle = "#0f172a";
-            targetCtx.fillRect(0, 0, width, height);
-
-            // Griglia interna
-            targetCtx.strokeStyle = "#334155";
-            targetCtx.lineWidth = 1;
-            const step = width / 4;
-            for (let i = 0; i <= width; i += step) {
-                targetCtx.beginPath(); targetCtx.moveTo(i, 0); targetCtx.lineTo(i, height); targetCtx.stroke();
-                targetCtx.beginPath(); targetCtx.moveTo(0, i); targetCtx.lineTo(width, i); targetCtx.stroke();
-            }
-
-            // Cerchi radar concentrici
-            targetCtx.strokeStyle = "rgba(59, 130, 246, 0.4)";
-            targetCtx.beginPath();
-            targetCtx.arc(width / 2, height / 2, width * 0.25, 0, Math.PI * 2);
-            targetCtx.stroke();
-            targetCtx.beginPath();
-            targetCtx.arc(width / 2, height / 2, width * 0.45, 0, Math.PI * 2);
-            targetCtx.stroke();
-
-            // Croce centrale
-            targetCtx.strokeStyle = "rgba(255, 255, 255, 0.2)";
-            targetCtx.beginPath();
-            targetCtx.moveTo(width / 2, 0); targetCtx.lineTo(width / 2, height);
-            targetCtx.moveTo(0, height / 2); targetCtx.lineTo(width, height / 2);
-            targetCtx.stroke();
-
-            // Punto centrale GPS (Pin rosso con alone)
-            targetCtx.fillStyle = "rgba(239, 68, 68, 0.3)";
-            targetCtx.beginPath();
-            targetCtx.arc(width / 2, height / 2, width * 0.15, 0, Math.PI * 2);
-            targetCtx.fill();
-
-            targetCtx.fillStyle = "#ef4444";
-            targetCtx.beginPath();
-            targetCtx.arc(width / 2, height / 2, 6, 0, Math.PI * 2);
-            targetCtx.fill();
-            targetCtx.strokeStyle = "#ffffff";
-            targetCtx.lineWidth = 2;
-            targetCtx.stroke();
-        }
-
-        function updateLiveMapDisplay() {
-            const ctx = liveMapCanvas.getContext('2d');
-            drawRadarMapOnContext(ctx, liveMapCanvas.width, liveMapCanvas.height);
-        }
-
         function initGPS() {
             if (navigator.geolocation) {
                 navigator.geolocation.watchPosition(async (position) => {
@@ -312,8 +287,10 @@
                     locationLabel.textContent = coordStr;
                     overlayCoords.textContent = coordStr;
                     
-                    // Disegna la mappa radar live
-                    updateLiveMapDisplay();
+                    // Aggiorna la posizione della mappa Leaflet in tempo reale
+                    liveMap.setView([currentGPS.lat, currentGPS.lon], 16);
+                    liveMarker.setLatLng([currentGPS.lat, currentGPS.lon]);
+                    setTimeout(() => liveMap.invalidateSize(), 100);
 
                     const now = Date.now();
                     if (now - lastGeocodeTime > 7000) { 
@@ -360,16 +337,21 @@
             const mapX = 30;
             const mapY = panelY + (panelH - mapSize) / 2;
 
-            // Disegna la mappa radar direttamente sul canvas della foto
-            const tempCanvas = document.createElement('canvas');
-            tempCanvas.width = 200; tempCanvas.height = 200;
-            const tCtx = tempCanvas.getContext('2d');
-            drawRadarMapOnContext(tCtx, 200, 200);
-
-            ctx.drawImage(tempCanvas, mapX, mapY, mapSize, mapSize);
+            // Disegna un riquadro grafico pulito per la mappa sulla foto salvata
+            ctx.fillStyle = "#1e293b";
+            ctx.fillRect(mapX, mapY, mapSize, mapSize);
             ctx.strokeStyle = "white";
             ctx.lineWidth = 4;
             ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+
+            // Simbolo pin e coordinate al centro del riquadro mappa sulla foto
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath();
+            ctx.arc(mapX + mapSize / 2, mapY + mapSize / 2, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.stroke();
 
             const textX = mapX + mapSize + 30;
             const baseFontSize = Math.max(16, canvas.width * 0.024);
@@ -409,8 +391,8 @@
                 info: `${currentAddressString} \nLat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)}`
             });
             
-            localStorage.setItem('gps_photos_pwa_v12', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_pwa_v12', photoCounter);
+            localStorage.setItem('gps_photos_pwa_v13', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_pwa_v13', photoCounter);
             updatePreviewUI();
         }
 
@@ -478,13 +460,13 @@
 
         function recalculateCounter() {
             photoCounter = photos.length === 0 ? 0 : Math.max(...photos.map(p => p.number));
-            localStorage.setItem('gps_photos_counter_pwa_v12', photoCounter);
+            localStorage.setItem('gps_photos_counter_pwa_v13', photoCounter);
         }
 
         document.getElementById('btn-reset-counter').addEventListener('click', () => {
             if (confirm("Azzerare la numerazione delle foto?")) { 
                 photoCounter = 0; 
-                localStorage.setItem('gps_photos_counter_pwa_v12', 0); 
+                localStorage.setItem('gps_photos_counter_pwa_v13', 0); 
                 updatePreviewUI(); 
             }
         });
@@ -511,7 +493,7 @@
             if(confirm("Sei sicuro di voler eliminare questa foto?")) {
                 photos = photos.filter(p => p.id !== currentActivePhotoId);
                 recalculateCounter();
-                localStorage.setItem('gps_photos_pwa_v12', JSON.stringify(photos));
+                localStorage.setItem('gps_photos_pwa_v13', JSON.stringify(photos));
                 document.getElementById('single-photo-modal').classList.add('hidden');
                 renderGallery();
                 updatePreviewUI();
@@ -579,7 +561,12 @@
             }
         }
 
-        window.onload = () => { initCamera(); initGPS(); updateLiveMapDisplay(); updatePreviewUI(); };
+        window.onload = () => { 
+            initCamera(); 
+            initGPS(); 
+            updatePreviewUI();
+            setTimeout(() => { liveMap.invalidateSize(); }, 300);
+        };
     </script>
 </body>
 </html>
