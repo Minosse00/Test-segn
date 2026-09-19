@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Map Camera - Archivio e Scatto</title>
+    <title>GPS Map Camera - Galleria Avanzata</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>.hidden-input { display: none; }</style>
 </head>
@@ -95,9 +95,24 @@
                 </div>
             </div>
 
+            <!-- Controlli Selezione Multipla -->
+            <div id="batch-controls" class="hidden flex justify-between items-center bg-gray-800 p-2 rounded-xl border border-gray-700 text-xs">
+                <span id="selected-count" class="text-gray-300 font-medium">0 selezionate</span>
+                <button onclick="eliminaSelezionate()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-3 py-1 rounded transition">
+                    🗑️ Elimina Selezionate
+                </button>
+            </div>
+
             <div id="lista-segnalazioni" class="space-y-3"></div>
         </div>
     </main>
+
+    <!-- MODALE VISUALIZZAZIONE FOTO A SCHERMO INTERO -->
+    <div id="modal-foto" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center p-4">
+        <button onclick="chiudiModal()" class="absolute top-4 right-4 bg-gray-800 text-white font-bold px-3 py-1.5 rounded-full text-sm border border-gray-600">✕ Chiudi</button>
+        <img id="modal-img" class="max-w-full max-h-[80vh] object-contain rounded-lg border border-gray-700 shadow-2xl mb-4" alt="Fullscreen">
+        <div id="modal-info" class="text-center text-xs text-gray-300 space-y-1"></div>
+    </div>
 
     <script>
         let coordinateAttuali = { lat: "0.000000", lng: "0.000000", citta: "Sconosciuta", indirizzo: "Posizione non rilevata", dataOra: "" };
@@ -158,8 +173,7 @@
                 document.getElementById('upload-placeholder').classList.add('hidden');
                 aggiornaOverlayDime();
                 
-                // SALVATAGGIO AUTOMATICO SUL DISPOSITIVO E NELLA GALLERIA INTERNA
-                elaboraESalvaAutomaticamente(fileSelezionato);
+                elaboraESalvaNellArchivio(fileSelezionato);
             }
             reader.readAsDataURL(fileSelezionato);
         }
@@ -209,7 +223,7 @@
             );
         }
 
-        function elaboraESalvaAutomaticamente(file) {
+        function elaboraESalvaNellArchivio(file) {
             let numeroProgressivo = parseInt(localStorage.getItem('counter_mapcamera') || '0') + 1;
             localStorage.setItem('counter_mapcamera', numeroProgressivo);
             const idFormattato = `#${String(numeroProgressivo).padStart(3, '0')}`;
@@ -239,7 +253,6 @@
                     const ctx = canvas.getContext('2d');
                     ctx.drawImage(img, 0, 0, w, h);
 
-                    // Watermark GPS Map Camera
                     const cardHeight = Math.floor(canvas.height * 0.22);
                     const cardY = canvas.height - cardHeight;
                     const padding = Math.floor(cardHeight * 0.08);
@@ -296,17 +309,7 @@
 
                     const fotoWatermarked = canvas.toDataURL('image/jpeg', 0.90);
                     const filename = `MapCamera_${idFormattato.replace('#','')}.jpg`;
-                    const blob = dataURLtoBlob(fotoWatermarked);
 
-                    // 1. Download automatico sul dispositivo
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = filename;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-
-                    // 2. Salvataggio nella galleria interna dell'app
                     const nuovaSegnalazione = {
                         id: Date.now(),
                         progressivo: idFormattato,
@@ -330,17 +333,103 @@
             reader.readAsDataURL(file);
         }
 
+        function scaricaFotoSingola(id) {
+            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
+            let item = archivio.find(s => s.id === id);
+            if (!item) return;
+
+            const blob = dataURLtoBlob(item.foto);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = item.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        async function condividiFoto(id) {
+            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
+            let item = archivio.find(s => s.id === id);
+            if (!item) return;
+
+            const blob = dataURLtoBlob(item.foto);
+            const file = new File([blob], item.filename, { type: 'image/jpeg' });
+
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({
+                        title: `Segnalazione ${item.progressivo}`,
+                        text: `${item.categoria} - ${item.luogo} (${item.data})`,
+                        files: [file]
+                    });
+                } catch (error) {
+                    if (error.name !== 'AbortError') {
+                        console.error("Errore di condivisione", error);
+                    }
+                }
+            } else {
+                alert("La condivisione diretta dei file non è supportata da questo browser. Usa il tasto 'Salva sul Telefono'.");
+            }
+        }
+
+        function apriModal(fotoUrl, titolo, info) {
+            document.getElementById('modal-img').src = fotoUrl;
+            document.getElementById('modal-info').innerHTML = `<p class="font-bold text-yellow-400">${titolo}</p><p>${info}</p>`;
+            document.getElementById('modal-foto').classList.remove('hidden');
+        }
+
+        function chiudiModal() {
+            document.getElementById('modal-foto').classList.add('hidden');
+        }
+
         function eliminaSegnalazione(id) {
             if (!confirm("Vuoi eliminare questa foto dalla galleria interna?")) return;
             let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
             archivio = archivio.filter(s => s.id !== id);
             localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
+            
+            // Se l'archivio è vuoto, azzera il contatore a 0
+            if (archivio.length === 0) {
+                localStorage.setItem('counter_mapcamera', '0');
+            }
+            
             mostraSegnalazioni();
         }
 
         function svuotaArchivio() {
             if (!confirm("Vuoi svuotare tutta la galleria interna?")) return;
             localStorage.removeItem('archivio_mapcamera');
+            localStorage.setItem('counter_mapcamera', '0'); // Azzeramento contatore a 0
+            mostraSegnalazioni();
+        }
+
+        function aggiornaSelezione() {
+            const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+            const count = checkboxes.length;
+            const batchControls = document.getElementById('batch-controls');
+            const selectedCount = document.getElementById('selected-count');
+
+            if (count > 0) {
+                batchControls.classList.remove('hidden');
+                selectedCount.innerText = `${count} selezionate`;
+            } else {
+                batchControls.classList.add('hidden');
+            }
+        }
+
+        function eliminaSelezionate() {
+            if (!confirm("Vuoi eliminare tutte le foto selezionate?")) return;
+            const checkboxes = document.querySelectorAll('.item-checkbox:checked');
+            const idsDaEliminare = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+
+            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
+            archivio = archivio.filter(s => !idsDaEliminare.includes(s.id));
+            localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
+
+            if (archivio.length === 0) {
+                localStorage.setItem('counter_mapcamera', '0');
+            }
+
             mostraSegnalazioni();
         }
 
@@ -361,7 +450,10 @@
 
         function mostraSegnalazioni() {
             const lista = document.getElementById('lista-segnalazioni');
+            const batchControls = document.getElementById('batch-controls');
+            if (batchControls) batchControls.classList.add('hidden');
             if (!lista) return;
+
             const archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
             
             lista.innerHTML = "";
@@ -372,18 +464,25 @@
 
             archivio.forEach(item => {
                 const div = document.createElement('div');
-                div.className = "bg-gray-800 p-3 rounded-xl border border-gray-700 flex items-center gap-3";
+                div.className = "bg-gray-800 p-3 rounded-xl border border-gray-700 flex items-center gap-3 relative";
                 div.innerHTML = `
-                    <img src="${item.foto}" class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border border-gray-600">
+                    <input type="checkbox" data-id="${item.id}" class="item-checkbox absolute top-2 left-2 w-4 h-4 accent-blue-600 cursor-pointer z-10" onchange="aggiornaSelezione()">
+                    <img src="${item.foto}" class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border border-gray-600 cursor-pointer pl-2" onclick="apriModal('${item.foto}', '${item.progressivo} - ${item.categoria}', '${item.luogo} | ${item.data}')" title="Clicca per ingrandire">
                     <div class="text-xs space-y-1 overflow-hidden w-full">
                         <div class="flex justify-between items-center">
-                            <span class="font-bold text-yellow-400">${item.progressivo} - ${item.categoria}</span>
+                            <span class="font-bold text-yellow-400 ml-3">${item.progressivo} - ${item.categoria}</span>
                             <span class="text-gray-400 text-[10px]">${item.data}</span>
                         </div>
-                        <p class="text-blue-300 truncate">📍 ${item.luogo || 'Posizione non specificata'}</p>
-                        <p class="text-gray-400 truncate">Note: ${item.note || 'Nessuna'}</p>
-                        <div class="flex gap-1.5 pt-1 justify-end">
-                            <button onclick="eliminaSegnalazione(${item.id})" class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition">
+                        <p class="text-blue-300 truncate ml-3">📍 ${item.luogo || 'Posizione non specificata'}</p>
+                        <p class="text-gray-400 truncate ml-3">Note: ${item.note || 'Nessuna'}</p>
+                        <div class="flex gap-1.5 pt-1 justify-end flex-wrap">
+                            <button onclick="condividiFoto(${item.id})" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
+                                📤 Condividi
+                            </button>
+                            <button onclick="scaricaFotoSingola(${item.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
+                                💾 Salva
+                            </button>
+                            <button onclick="eliminaSegnalazione(${item.id})" class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
                                 🗑️ Elimina
                             </button>
                         </div>
