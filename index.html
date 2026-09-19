@@ -2,24 +2,38 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GPS Map Camera SP</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Regole di sicurezza per evitare overflow e fuoriuscite dai bordi del display */
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            position: fixed;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+    </style>
 </head>
-<body class="bg-gray-950 text-white h-screen flex flex-col overflow-hidden select-none">
+<body class="bg-gray-950 text-white flex flex-col select-none">
 
     <!-- HEADER / INFO GPS & STRADA PROVINCIALE -->
-    <header class="bg-gray-900/80 backdrop-blur-md p-3 border-b border-gray-800 flex justify-between items-center z-10">
-        <div>
-            <h1 class="text-sm font-bold tracking-wide text-amber-400 flex items-center gap-1.5">
-                <i class="fa-solid fa-road"></i> <span id="sp-label">Ricerca Strada Provinciale...</span>
+    <header class="bg-gray-900/90 backdrop-blur-md px-3 py-2 border-b border-gray-800 flex justify-between items-center z-10 shrink-0">
+        <div class="overflow-hidden pr-2">
+            <h1 class="text-xs font-bold tracking-wide text-amber-400 flex items-center gap-1.5 truncate">
+                <i class="fa-solid fa-road text-[11px] shrink-0"></i> <span id="sp-label" class="truncate">Ricerca Strada Provinciale...</span>
             </h1>
-            <p class="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
-                <i class="fa-solid fa-location-dot text-red-500"></i> <span id="location-label">Localizzazione in corso...</span>
+            <p class="text-[10px] text-gray-400 flex items-center gap-1 mt-0.5 truncate">
+                <i class="fa-solid fa-location-dot text-red-500 text-[10px] shrink-0"></i> <span id="location-label" class="truncate">Localizzazione in corso...</span>
             </p>
         </div>
-        <div id="offline-badge" class="hidden bg-red-600/20 text-red-400 border border-red-500/30 text-[10px] px-2 py-0.5 rounded-full font-semibold">
+        <div id="offline-badge" class="hidden bg-red-600/20 text-red-400 border border-red-500/35 text-[9px] px-2 py-0.5 rounded-full font-semibold shrink-0">
             OFFLINE
         </div>
     </header>
@@ -29,65 +43,65 @@
         <video id="camera-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
         <canvas id="photo-canvas" class="hidden"></canvas>
 
-        <!-- OVERLAY DATI SU FOTO / ANTEPRIMA LIVE -->
-        <div class="absolute bottom-4 left-4 right-4 pointer-events-none flex flex-col justify-end text-shadow z-10">
-            <div class="bg-black/40 backdrop-blur-sm p-2 rounded-lg border border-white/10 max-w-xs text-[11px] space-y-0.5">
-                <div class="font-bold text-amber-300" id="overlay-sp">SP - --</div>
+        <!-- OVERLAY DATI SU FOTO / ANTEPRIMA LIVE (Ridimensionato e compatto) -->
+        <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
+            <div class="bg-black/50 backdrop-blur-md p-2 rounded-lg border border-white/10 max-w-[260px] text-[10px] space-y-0.5 shadow-lg">
+                <div class="font-bold text-amber-300 truncate" id="overlay-sp">SP - --</div>
                 <div class="text-gray-200 truncate" id="overlay-addr">Indirizzo: Rilevamento...</div>
-                <div class="text-gray-400 text-[10px]" id="overlay-coords">Lat: 0.0000, Lon: 0.0000</div>
-                <div class="text-gray-400 text-[10px]" id="overlay-date">Data: --/--/---- --:--</div>
+                <div class="text-gray-400 text-[9px]" id="overlay-coords">Lat: 0.0000, Lon: 0.0000</div>
+                <div class="text-gray-400 text-[9px]" id="overlay-date">Data: --/--/---- --:--</div>
             </div>
         </div>
     </main>
 
-    <!-- CONTROLLI INFERIORI -->
-    <footer class="bg-gray-900 p-5 flex items-center justify-around border-t border-gray-800 z-10">
-        <!-- ANTEPRIMA FOTO (Sostituto dello Swipe) -->
-        <button id="btn-gallery-open" class="relative w-12 h-12 rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden focus:outline-none shadow-lg active:scale-95 transition">
+    <!-- CONTROLLI INFERIORI (Compatti e ottimizzati per schermi stretti) -->
+    <footer class="bg-gray-900 px-4 py-3 flex items-center justify-around border-t border-gray-800 z-10 shrink-0">
+        <!-- ANTEPRIMA FOTO -->
+        <button id="btn-gallery-open" class="relative w-11 h-11 rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden focus:outline-none shadow-lg active:scale-95 transition shrink-0">
             <img id="preview-thumb" src="" alt="" class="w-full h-full object-cover hidden">
-            <div id="preview-placeholder" class="w-full h-full flex items-center justify-center text-gray-500 text-xs">
+            <div id="preview-placeholder" class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
                 <i class="fa-solid fa-images"></i>
             </div>
             <span id="photo-counter-badge" class="absolute -top-1 -right-1 bg-amber-500 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full">0</span>
         </button>
 
         <!-- PULSANTE DI SCATTO -->
-        <button id="btn-capture" class="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center focus:outline-none active:scale-90 transition shadow-xl">
-            <div class="w-16 h-16 bg-white rounded-full"></div>
+        <button id="btn-capture" class="w-16 h-16 rounded-full border-3 border-white flex items-center justify-center focus:outline-none active:scale-90 transition shadow-xl shrink-0">
+            <div class="w-13 h-13 bg-white rounded-full w-[52px] h-[52px]"></div>
         </button>
 
         <!-- CAMBIA FOTOCAMERA -->
-        <button id="btn-switch-camera" class="w-12 h-12 rounded-full bg-gray-800 text-gray-300 flex items-center justify-center focus:outline-none hover:bg-gray-700 active:scale-95 transition">
-            <i class="fa-solid fa-rotate-camera text-lg"></i>
+        <button id="btn-switch-camera" class="w-11 h-11 rounded-full bg-gray-800 text-gray-300 flex items-center justify-center focus:outline-none hover:bg-gray-700 active:scale-95 transition shrink-0">
+            <i class="fa-solid fa-rotate-camera text-base"></i>
         </button>
     </footer>
 
     <!-- MODALE GALLERIA -->
     <div id="gallery-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex flex-col">
-        <div class="p-4 bg-gray-900 flex justify-between items-center border-b border-gray-800">
+        <div class="p-3 bg-gray-900 flex justify-between items-center border-b border-gray-800 shrink-0">
             <div class="flex items-center gap-2">
-                <h2 class="font-bold text-lg">Galleria Foto SP</h2>
-                <span id="gallery-total-count" class="text-xs bg-gray-800 px-2 py-0.5 rounded-full text-gray-400">0</span>
+                <h2 class="font-bold text-sm">Galleria Foto SP</h2>
+                <span id="gallery-total-count" class="text-[10px] bg-gray-800 px-2 py-0.5 rounded-full text-gray-400">0</span>
             </div>
             <div class="flex gap-2">
-                <button id="btn-toggle-select" class="text-xs bg-gray-800 hover:bg-gray-700 px-3 py-1.5 rounded-lg font-medium transition">Seleziona</button>
-                <button id="btn-close-gallery" class="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                <button id="btn-toggle-select" class="text-xs bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg font-medium transition">Seleziona</button>
+                <button id="btn-close-gallery" class="w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-sm"></i></button>
             </div>
         </div>
 
         <!-- CONTENITORE FOTO DIVISE PER GIORNO -->
-        <div id="gallery-content" class="flex-1 overflow-y-auto p-4 space-y-6">
+        <div id="gallery-content" class="flex-1 overflow-y-auto p-3 space-y-4">
             <!-- Popolato dinamicamente -->
         </div>
 
-        <!-- BARRA AZIONI MULTIPLE (nascosta di default) -->
-        <div id="selection-toolbar" class="hidden bg-gray-900 border-t border-gray-800 p-3 flex justify-between items-center">
+        <!-- BARRA AZIONI MULTIPLE -->
+        <div id="selection-toolbar" class="hidden bg-gray-900 border-t border-gray-800 p-2.5 flex justify-between items-center shrink-0">
             <span id="selected-count-label" class="text-xs text-gray-400">0 selezionate</span>
             <div class="flex gap-2">
-                <button id="btn-bulk-share" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-4 py-2 rounded-lg font-medium flex items-center gap-1.5 transition disabled:opacity-50" disabled>
+                <button id="btn-bulk-share" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 transition disabled:opacity-50" disabled>
                     <i class="fa-solid fa-share-nodes"></i> Condividi
                 </button>
-                <button id="btn-bulk-delete" class="bg-red-600 hover:bg-red-500 text-white text-xs px-4 py-2 rounded-lg font-medium flex items-center gap-1.5 transition disabled:opacity-50" disabled>
+                <button id="btn-bulk-delete" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 transition disabled:opacity-50" disabled>
                     <i class="fa-solid fa-trash"></i> Elimina
                 </button>
             </div>
@@ -119,7 +133,6 @@
         const previewPlaceholder = document.getElementById('preview-placeholder');
         const photoCounterBadge = document.getElementById('photo-counter-badge');
 
-        // Avvio Fotocamera (Forzatura Posteriore)
         async function initCamera() {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
@@ -128,27 +141,25 @@
                 const constraints = {
                     video: {
                         facingMode: useFrontCamera ? "user" : { exact: "environment" },
-                        width: { ideal: 1920 },
-                        height: { ideal: 1080 }
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
                     }
                 };
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
                 videoElem.srcObject = stream;
             } catch (err) {
-                console.warn("Fotocamera posteriore non trovata con exact: environment, fallback generico...", err);
                 try {
                     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: useFrontCamera ? "user" : "environment" } });
                     videoElem.srcObject = stream;
                 } catch (e) {
-                    alert("Impossibile accedere alla fotocamera. Controlla i permessi del browser.");
+                    alert("Impossibile accedere alla fotocamera.");
                 }
             }
         }
 
-        // Rilevamento GPS & Riconoscimento Strade Provinciali (SP)
         function initGPS() {
             if (!navigator.geolocation) {
-                locationLabel.textContent = "GPS non supportato dal browser";
+                locationLabel.textContent = "GPS non supportato";
                 return;
             }
             navigator.geolocation.watchPosition(async (position) => {
@@ -157,7 +168,6 @@
                 
                 overlayCoords.textContent = `Lat: ${currentGPS.lat.toFixed(4)}, Lon: ${currentGPS.lon.toFixed(4)}`;
                 
-                // Reverse geocoding offline-tolerant tramite OpenStreetMap Nominatim (se c'è rete) o fallback
                 try {
                     const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentGPS.lat}&lon=${currentGPS.lon}`);
                     const data = await res.json();
@@ -165,18 +175,16 @@
                         const road = data.address.road || data.address.pedestrian || "Strada Comunale";
                         const city = data.address.city || data.address.town || data.address.village || "Località ignota";
                         
-                        // Logica Strade Provinciali (SP)
                         if (road.toUpperCase().includes("SP") || road.toUpperCase().includes("PROVINCIALE")) {
                             currentGPS.sp = road;
                         } else {
-                            // Simulazione intelligente basata sulla denominazione della strada o area
                             currentGPS.sp = `SP - Tratto di ${road}`;
                         }
                         currentGPS.address = `${city} (${road})`;
                     }
                 } catch(e) {
-                    currentGPS.address = "Modalità Offline - Posizione GPS attiva";
-                    currentGPS.sp = "SP - Rilevamento autonomo locale";
+                    currentGPS.address = "Modalità Offline - GPS attivo";
+                    currentGPS.sp = "SP - Rilevamento locale";
                 }
 
                 spLabel.textContent = currentGPS.sp;
@@ -184,11 +192,10 @@
                 overlaySp.textContent = currentGPS.sp;
                 overlayAddr.textContent = currentGPS.address;
             }, (error) => {
-                locationLabel.textContent = "Segnale GPS assente / disattivato";
+                locationLabel.textContent = "Segnale GPS assente";
             }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
         }
 
-        // Controllo Stato Rete Offline/Online
         function updateNetworkStatus() {
             if (navigator.onLine) {
                 offlineBadge.classList.add('hidden');
@@ -199,23 +206,19 @@
         window.addEventListener('online', updateNetworkStatus);
         window.addEventListener('offline', updateNetworkStatus);
 
-        // Aggiornamento Data/Ora in tempo reale sull'anteprima
         setInterval(() => {
             const now = new Date();
             overlayDate.textContent = `Data: ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
         }, 1000);
 
-        // Scatto Foto con sovraimpressione dati
         document.getElementById('btn-capture').addEventListener('click', () => {
             const canvas = canvasElem;
             canvas.width = videoElem.videoWidth || 1280;
             canvas.height = videoElem.videoHeight || 720;
             const ctx = canvas.getContext('2d');
             
-            // Disegna fotogramma video
             ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
 
-            // Disegna box dati in basso a sinistra sulla foto salvata
             ctx.fillStyle = "rgba(0, 0, 0, 0.6)";
             ctx.fillRect(20, canvas.height - 180, 500, 150);
             ctx.fillStyle = "#F59E0B";
@@ -244,7 +247,6 @@
             saveDataToStorage();
             updatePreviewUI();
 
-            // Animazione lampo scatto
             videoElem.classList.add('opacity-40');
             setTimeout(() => videoElem.classList.remove('opacity-40'), 150);
         });
@@ -263,19 +265,17 @@
             } else {
                 previewThumb.classList.add('hidden');
                 previewPlaceholder.classList.remove('hidden');
-                photoCounter = 0; // Reset a zero se azzerate tutte
+                photoCounter = 0;
                 localStorage.setItem('gps_photos_counter', 0);
                 photoCounterBadge.textContent = 0;
             }
         }
 
-        // Inversione Fotocamera (Anteriore / Posteriore)
         document.getElementById('btn-switch-camera').addEventListener('click', () => {
             useFrontCamera = !useFrontCamera;
             initCamera();
         });
 
-        // Gestione Apertura/Chiusura Galleria
         const galleryModal = document.getElementById('gallery-modal');
         document.getElementById('btn-gallery-open').addEventListener('click', () => {
             renderGallery();
@@ -286,18 +286,16 @@
             exitSelectionMode();
         });
 
-        // Rendering Galleria per Giorni
         function renderGallery() {
             const container = document.getElementById('gallery-content');
             container.innerHTML = '';
             document.getElementById('gallery-total-count').textContent = photos.length;
 
             if (photos.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-500 py-20"><i class="fa-solid fa-folder-open text-4xl mb-2"></i><p>Nessuna foto salvata in galleria</p></div>`;
+                container.innerHTML = `<div class="text-center text-gray-500 py-16"><i class="fa-solid fa-folder-open text-3xl mb-2"></i><p class="text-xs">Nessuna foto salvata</p></div>`;
                 return;
             }
 
-            // Raggruppamento per giorno
             const grouped = {};
             photos.forEach(p => {
                 if (!grouped[p.dateStr]) grouped[p.dateStr] = [];
@@ -307,18 +305,18 @@
             for (const [day, dayPhotos] of Object.entries(grouped)) {
                 const daySection = document.createElement('div');
                 daySection.innerHTML = `
-                    <div class="text-xs font-bold text-amber-400 mb-2 uppercase tracking-wider sticky top-0 bg-black/80 py-1 backdrop-blur z-10">${day}</div>
-                    <div class="grid grid-cols-3 gap-2"></div>
+                    <div class="text-[10px] font-bold text-amber-400 mb-1.5 uppercase tracking-wider sticky top-0 bg-black/90 py-1 backdrop-blur z-10">${day}</div>
+                    <div class="grid grid-cols-3 gap-1.5"></div>
                 `;
                 const grid = daySection.querySelector('.grid');
 
                 dayPhotos.forEach(photo => {
                     const item = document.createElement('div');
-                    item.className = `relative aspect-square bg-gray-900 rounded-lg overflow-hidden border-2 ${selectedPhotoIds.has(photo.id) ? 'border-amber-500' : 'border-transparent'}`;
+                    item.className = `relative aspect-square bg-gray-900 rounded-md overflow-hidden border-2 ${selectedPhotoIds.has(photo.id) ? 'border-amber-500' : 'border-transparent'}`;
                     item.innerHTML = `
                         <img src="${photo.data}" class="w-full h-full object-cover">
-                        <div class="absolute top-1 left-1 bg-black/60 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">#${photo.number}</div>
-                        ${isSelectionMode ? `<div class="absolute top-1 right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center ${selectedPhotoIds.has(photo.id) ? 'bg-amber-500 text-black' : 'bg-black/40'}"><i class="fa-solid fa-check text-[10px] ${selectedPhotoIds.has(photo.id) ? '' : 'hidden'}"></i></div>` : ''}
+                        <div class="absolute top-0.5 left-0.5 bg-black/60 text-white text-[9px] font-bold px-1 py-0.5 rounded">#${photo.number}</div>
+                        ${isSelectionMode ? `<div class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full border border-white flex items-center justify-center ${selectedPhotoIds.has(photo.id) ? 'bg-amber-500 text-black' : 'bg-black/40'}"><i class="fa-solid fa-check text-[9px] ${selectedPhotoIds.has(photo.id) ? '' : 'hidden'}"></i></div>` : ''}
                     `;
                     
                     item.addEventListener('click', () => {
@@ -331,7 +329,6 @@
                             renderGallery();
                             updateSelectionToolbar();
                         } else {
-                            // Zoom o visualizzazione dettaglio rapida
                             alert(`Foto #${photo.number}\n${photo.info}`);
                         }
                     });
@@ -341,7 +338,6 @@
             }
         }
 
-        // Selezione Multipla, Condivisione e Eliminazione
         const btnToggleSelect = document.getElementById('btn-toggle-select');
         const selectionToolbar = document.getElementById('selection-toolbar');
         const selectedCountLabel = document.getElementById('selected-count-label');
@@ -371,17 +367,15 @@
 
         function updateSelectionToolbar() {
             const count = selectedPhotoIds.size;
-            selectedCountLabel.textContent = `${count} selezionate`;
+            selectedCountLabel.textContent = `${count} sel.`;
             btnBulkShare.disabled = count === 0;
             btnBulkDelete.disabled = count === 0;
         }
 
-        // Azione Elimina (Selezionate) + Reset Contatore se 0 foto rimaste
         btnBulkDelete.addEventListener('click', () => {
             if (confirm(`Eliminare ${selectedPhotoIds.size} foto selezionate?`)) {
                 photos = photos.filter(p => !selectedPhotoIds.has(p.id));
                 
-                // Se la galleria si svuota completamente, resetta il contatore a zero
                 if (photos.length === 0) {
                     photoCounter = 0;
                 }
@@ -393,7 +387,6 @@
             }
         });
 
-        // Azione Condividi (Selezionate tramite API nativa Web Share se disponibile)
         btnBulkShare.addEventListener('click', async () => {
             const selectedPhotos = photos.filter(p => selectedPhotoIds.has(p.id));
             if (navigator.share) {
@@ -412,13 +405,12 @@
                         return;
                     }
                 } catch (e) {
-                    console.log("Condivisione file nativa annullata o non supportata", e);
+                    console.log("Condivisione annullata", e);
                 }
             }
-            alert(`Funzione di condivisione: ${selectedPhotos.length} foto pronte per l'invio esterno.`);
+            alert(`Funzione di condivisione: ${selectedPhotos.length} foto pronte.`);
         });
 
-        // Inizializzazione all'avvio
         window.addEventListener('load', () => {
             initCamera();
             initGPS();
