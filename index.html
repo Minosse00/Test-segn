@@ -4,6 +4,44 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GPS Map Camera SP</title>
+    
+    <!-- Meta tag per PWA e installazione da browser -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GPS Map Camera">
+    <meta name="theme-color" content="#030712">
+
+    <!-- Icona personalizzata per PWA e preferiti[cite: 3] -->
+    <link rel="icon" type="image/jpeg" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=">
+    <link rel="apple-touch-icon" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=">
+
+    <!-- Manifest dinamico incorporato per l'installazione PWA -->
+    <script>
+        const manifestData = {
+            "name": "GPS Map Camera SP",
+            "short_name": "GPS Camera",
+            "start_url": "./index.html",
+            "display": "standalone",
+            "background_color": "#030712",
+            "theme_color": "#030712",
+            "icons": [
+                {
+                    "src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+                    "sizes": "512x512",
+                    "type": "image/jpeg"
+                }
+            ]
+        };
+        const stringManifest = JSON.stringify(manifestData);
+        const blob = new Blob([stringManifest], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(blob);
+        const link = document.createElement('link');
+        link.rel = 'manifest';
+        link.href = manifestURL;
+        document.head.appendChild(link);
+    </script>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -69,7 +107,7 @@
         </div>
     </main>
 
-    <!-- CONTROLLI INFERIORI (Categoria al posto del cambio fotocamera) -->
+    <!-- CONTROLLI INFERIORI -->
     <footer class="w-full bg-gray-900 px-4 py-3 flex items-center justify-around border-t border-gray-800 z-10 shrink-0">
         <!-- ANTEPRIMA FOTO -->
         <button id="btn-gallery-open" class="relative w-12 h-12 rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden focus:outline-none shadow-lg active:scale-95 transition shrink-0 flex items-center justify-center">
@@ -152,8 +190,8 @@
     <!-- SCRIPT LOGICA APPLICATIVA -->
     <script>
         let stream = null;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_sp_nocamera_btn') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_nocamera_btn') || '0');
+        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa') || '0');
         let isSelectionMode = false;
         let selectedPhotoIds = new Set();
         let currentActivePhotoId = null;
@@ -286,7 +324,7 @@
         document.getElementById('btn-reset-counter').addEventListener('click', () => {
             if (confirm("Vuoi azzerare la numerazione progressiva delle foto?")) {
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_nocamera_btn', 0);
+                localStorage.setItem('gps_photos_counter_pwa', 0);
                 updatePreviewUI();
             }
         });
@@ -358,8 +396,8 @@
         });
 
         function saveDataToStorage() {
-            localStorage.setItem('gps_photos_sp_nocamera_btn', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_nocamera_btn', photoCounter);
+            localStorage.setItem('gps_photos_pwa', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_pwa', photoCounter);
         }
 
         function updatePreviewUI() {
@@ -372,7 +410,7 @@
                 previewThumb.classList.add('hidden');
                 previewPlaceholder.classList.remove('hidden');
                 photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_nocamera_btn', 0);
+                localStorage.setItem('gps_photos_counter_pwa', 0);
                 photoCounterBadge.textContent = 0;
             }
         }
@@ -475,7 +513,7 @@
                 photos = photos.filter(p => p.id !== currentActivePhotoId);
                 if (photos.length === 0) {
                     photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_nocamera_btn', 0);
+                    localStorage.setItem('gps_photos_counter_pwa', 0);
                 }
                 saveDataToStorage();
                 singlePhotoModal.classList.add('hidden');
@@ -524,7 +562,7 @@
                 
                 if (photos.length === 0) {
                     photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_nocamera_btn', 0);
+                    localStorage.setItem('gps_photos_counter_pwa', 0);
                 }
                 
                 saveDataToStorage();
