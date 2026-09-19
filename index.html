@@ -19,21 +19,14 @@
         <div class="bg-gray-800 rounded-2xl p-4 shadow-xl border border-gray-700 space-y-4">
             
             <div class="flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-xl overflow-hidden bg-gray-950 aspect-video relative">
-                <!-- Input per Scatto Diretto con Fotocamera -->
+                <!-- Input Fotocamera Diretto (Compatibile Android & iOS) -->
                 <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden-input" onchange="previewImage(event)">
-                <!-- Input per Selezione da Galleria/File -->
-                <input type="file" accept="image/*" id="gallery-input" class="hidden-input" onchange="previewImage(event)">
                 
                 <div id="upload-placeholder" class="text-center p-4 w-full">
-                    <p class="text-xs text-gray-400 mb-3 font-bold uppercase tracking-wider">Scegli come inserire la foto</p>
-                    <div class="flex gap-2 justify-center">
-                        <button type="button" onclick="document.getElementById('camera-input').click()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center gap-1.5 shadow-md">
-                            📸 Fotocamera
-                        </button>
-                        <button type="button" onclick="document.getElementById('gallery-input').click()" class="bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition flex items-center gap-1.5 border border-gray-600 shadow-md">
-                            🖼️ Galleria
-                        </button>
-                    </div>
+                    <p class="text-xs text-gray-400 mb-3 font-bold uppercase tracking-wider">Pronto per lo scatto</p>
+                    <button type="button" onclick="document.getElementById('camera-input').click()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-3 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-lg mx-auto">
+                        📸 Scatta Foto GPS
+                    </button>
                 </div>
                 
                 <!-- Contenitore Immagine con Template GPS Map Camera Sovrapposto -->
@@ -55,52 +48,55 @@
                 </div>
             </div>
 
-            <!-- Dettagli Segnalazione -->
+            <!-- CONTROLLI: RISOLUZIONE E CATEGORIA -->
             <div class="grid grid-cols-2 gap-2">
                 <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Risoluzione Foto</label>
+                    <select id="risoluzione" class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm outline-none text-white">
+                        <option value="1280">Media (1280px)</option>
+                        <option value="1920" selected>Alta (Full HD)</option>
+                        <option value="originale">Originale (Massima)</option>
+                    </select>
+                </div>
+                <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">Tipo Problema</label>
-                    <select id="categoria" class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm outline-none text-white">
+                    <select id="categoria" class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm outline-none text-white" onchange="aggiornaOverlayDime()">
                         <option value="🕳️ Buca stradale">🕳️ Buche</option>
                         <option value="🌱 Taglio erba">🌱 Taglio Erba</option>
                         <option value="🛑 Segnaletica">🛑 Segnaletica</option>
                         <option value="⚙️ Altro">⚙️ Altro</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
                 <div>
                     <label class="block text-xs font-medium text-gray-400 mb-1">Posizione GPS</label>
                     <button type="button" onclick="ottieniPosizione()" class="w-full bg-blue-600 hover:bg-blue-700 p-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1">
                         📍 <span id="gps-btn-text">Aggiorna GPS</span>
                     </button>
                 </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-400 mb-1">Note (opzionale)</label>
+                    <input type="text" id="note" oninput="aggiornaOverlayDime()" class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm outline-none text-white" placeholder="Es. civico 4...">
+                </div>
             </div>
             
             <p id="gps-status" class="text-[11px] text-gray-300 font-mono text-center truncate bg-gray-900 p-2 rounded border border-gray-700">Rilevamento GPS automatico...</p>
 
-            <div>
-                <label class="block text-xs font-medium text-gray-400 mb-1">Note (opzionale)</label>
-                <input type="text" id="note" oninput="aggiornaOverlayDime()" class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm outline-none text-white" placeholder="Es. vicino al civico 4...">
-            </div>
-
-            <!-- AZIONI DI CONDIVISIONE / SALVATAGGIO IN MAPCAMERA -->
-            <div class="space-y-2 pt-2">
-                <button onclick="gestisciSalvataggioECondivisione('share')" class="w-full bg-blue-600 text-white py-3.5 rounded-xl font-bold text-center shadow-lg hover:bg-blue-500 transition flex items-center justify-center gap-2">
-                    📤 Condividi Foto (Salva in MapCamera)
-                </button>
-
-                <button onclick="gestisciSalvataggioECondivisione('whatsapp')" class="w-full bg-green-500 text-gray-950 py-3 rounded-xl font-black text-center shadow-lg hover:bg-green-400 transition flex items-center justify-center gap-2 text-sm">
-                    💬 Invia Foto su WhatsApp
+            <!-- PULSANTE SALVATAGGIO MAPCAMERA -->
+            <div class="pt-2">
+                <button onclick="salvaFotoMapCamera()" class="w-full bg-emerald-600 text-white py-3.5 rounded-xl font-bold text-center shadow-lg hover:bg-emerald-500 transition flex items-center justify-center gap-2">
+                    💾 Salva in MapCamera
                 </button>
             </div>
         </div>
 
-        <!-- STORICO LOCALE / SELEZIONE FOTO -->
+        <!-- STORICO LOCALE -->
         <div class="space-y-3">
             <div class="flex justify-between items-center px-1">
                 <h2 class="text-sm font-bold text-gray-400 tracking-wider uppercase">Archivio MapCamera</h2>
-                <div class="flex gap-2 items-center">
-                    <button onclick="condividiSelezionate()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded-lg font-semibold transition">Condividi Selezionate</button>
-                    <button onclick="svuotaArchivio()" class="text-xs text-red-400 hover:text-red-300 underline">Elimina Tutti</button>
-                </div>
+                <button onclick="svuotaArchivio()" class="text-xs text-red-400 hover:text-red-300 underline">Elimina Tutti</button>
             </div>
             <div id="lista-segnalazioni" class="space-y-3"></div>
         </div>
@@ -108,8 +104,7 @@
 
     <script>
         let coordinateAttuali = { lat: "0.000000", lng: "0.000000", citta: "Sconosciuta", indirizzo: "Posizione non rilevata", dataOra: "" };
-        let fotoBase64Originale = null;
-        let fileCondivisibile = null;
+        let fileSelezionato = null;
         let dirHandleMapCamera = null;
 
         function dataURLtoBlob(dataurl) {
@@ -153,17 +148,16 @@
         function previewImage(event) {
             const files = event.target.files;
             if (!files || files.length === 0) return;
-            fileCondivisibile = files[0];
+            fileSelezionato = files[0];
 
             const reader = new FileReader();
             reader.onload = function(e) {
-                fotoBase64Originale = e.target.result;
-                document.getElementById('preview').src = fotoBase64Originale;
+                document.getElementById('preview').src = e.target.result;
                 document.getElementById('preview-container').classList.remove('hidden');
                 document.getElementById('upload-placeholder').classList.add('hidden');
                 aggiornaOverlayDime();
             }
-            reader.readAsDataURL(fileCondivisibile);
+            reader.readAsDataURL(fileSelezionato);
         }
 
         function ottieniPosizione() {
@@ -211,78 +205,99 @@
             );
         }
 
-        function applicaWatermarkGPSMapCamera(imgSrc, idSegnalazione, categoria, noteText, callback) {
-            const img = new Image();
-            img.onload = function() {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0);
+        function elaboraERidimensionaImmagine(file, maxDim, callback) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    let w = img.width;
+                    let h = img.height;
 
-                const cardHeight = Math.floor(canvas.height * 0.22);
-                const cardY = canvas.height - cardHeight;
-                const padding = Math.floor(cardHeight * 0.08);
+                    if (maxDim !== 'originale') {
+                        const targetMax = parseInt(maxDim);
+                        if (w > h && w > targetMax) {
+                            h = Math.round((h * targetMax) / w);
+                            w = targetMax;
+                        } else if (h >= w && h > targetMax) {
+                            w = Math.round((w * targetMax) / h);
+                            h = targetMax;
+                        }
+                    }
 
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-                ctx.fillRect(0, cardY, canvas.width, cardHeight);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
 
-                const mapWidth = Math.floor(cardHeight * 0.85);
-                const mapHeight = Math.floor(cardHeight * 0.84);
-                const mapX = padding;
-                const mapY = cardY + padding;
+                    // Applicazione Watermark GPS Map Camera sulla foto ridimensionata
+                    const cardHeight = Math.floor(canvas.height * 0.22);
+                    const cardY = canvas.height - cardHeight;
+                    const padding = Math.floor(cardHeight * 0.08);
 
-                ctx.fillStyle = '#1e293b';
-                ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
-                ctx.strokeStyle = '#3b82f6';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
+                    ctx.fillRect(0, cardY, canvas.width, cardHeight);
 
-                ctx.font = `${Math.floor(mapHeight * 0.4)}px sans-serif`;
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText('📍', mapX + (mapWidth / 2), mapY + (mapHeight / 2));
+                    const mapWidth = Math.floor(cardHeight * 0.85);
+                    const mapHeight = Math.floor(cardHeight * 0.84);
+                    const mapX = padding;
+                    const mapY = cardY + padding;
 
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'top';
-                const textX = mapX + mapWidth + padding;
-                let currentY = mapY;
-                const lineSpacing = Math.floor(cardHeight * 0.14);
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
+                    ctx.strokeStyle = '#3b82f6';
+                    ctx.lineWidth = 3;
+                    ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
 
-                ctx.font = `bold ${Math.floor(cardHeight * 0.12)}px Arial`;
-                ctx.fillStyle = '#60a5fa';
-                ctx.fillText(coordinateAttuali.citta.toUpperCase(), textX, currentY);
+                    ctx.font = `${Math.floor(mapHeight * 0.4)}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('📍', mapX + (mapWidth / 2), mapY + (mapHeight / 2));
 
-                currentY += lineSpacing;
-                ctx.font = `${Math.floor(cardHeight * 0.10)}px Arial`;
-                ctx.fillStyle = '#ffffff';
-                ctx.fillText(coordinateAttuali.indirizzo, textX, currentY);
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    const textX = mapX + mapWidth + padding;
+                    let currentY = mapY;
+                    const lineSpacing = Math.floor(cardHeight * 0.14);
 
-                currentY += lineSpacing;
-                ctx.fillStyle = '#cbd5e1';
-                ctx.fillText(`Lat: ${coordinateAttuali.lat} | Long: ${coordinateAttuali.lng}`, textX, currentY);
+                    ctx.font = `bold ${Math.floor(cardHeight * 0.12)}px Arial`;
+                    ctx.fillStyle = '#60a5fa';
+                    ctx.fillText(coordinateAttuali.citta.toUpperCase(), textX, currentY);
 
-                currentY += lineSpacing;
-                ctx.fillStyle = '#facc15';
-                ctx.fillText(`${coordinateAttuali.dataOra} - ${idSegnalazione} ${categoria}`, textX, currentY);
-
-                if (noteText) {
                     currentY += lineSpacing;
-                    ctx.fillStyle = '#9ca3af';
-                    ctx.fillText(`Note: ${noteText}`, textX, currentY);
-                }
+                    ctx.font = `${Math.floor(cardHeight * 0.10)}px Arial`;
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(coordinateAttuali.indirizzo, textX, currentY);
 
-                callback(canvas.toDataURL('image/jpeg', 0.92));
+                    currentY += lineSpacing;
+                    ctx.fillStyle = '#cbd5e1';
+                    ctx.fillText(`Lat: ${coordinateAttuali.lat} | Long: ${coordinateAttuali.lng}`, textX, currentY);
+
+                    currentY += lineSpacing;
+                    ctx.fillStyle = '#facc15';
+                    const categoria = document.getElementById('categoria').value;
+                    const noteText = document.getElementById('note').value;
+                    let idFormattato = document.getElementById('temp-id-progressivo').value;
+                    ctx.fillText(`${coordinateAttuali.dataOra} - ${idFormattato} ${categoria}`, textX, currentY);
+
+                    if (noteText) {
+                        currentY += lineSpacing;
+                        ctx.fillStyle = '#9ca3af';
+                        ctx.fillText(`Note: ${noteText}`, textX, currentY);
+                    }
+
+                    callback(canvas.toDataURL('image/jpeg', 0.90));
+                };
+                img.src = e.target.result;
             };
-            img.src = imgSrc;
+            reader.readAsDataURL(file);
         }
 
-        async function salvaNellaCartellaMapCamera(blob, filename) {
-            // Tenta di usare l'API nativa per selezionare/creare la cartella "MapCamera"
+        async function scaricaInCartellaMapCamera(blob, filename) {
+            // Supporto moderni browser Android/Desktop
             if ('showDirectoryPicker' in window) {
                 try {
                     if (!dirHandleMapCamera) {
-                        alert("Seleziona o crea la cartella 'MapCamera' nella memoria del dispositivo per il salvataggio automatico.");
                         dirHandleMapCamera = await window.showDirectoryPicker();
                     }
                     const newFileHandle = await dirHandleMapCamera.getFileHandle(filename, { create: true });
@@ -291,11 +306,11 @@
                     await writable.close();
                     return;
                 } catch (err) {
-                    console.log("Permesso cartella non concesso o annullato, uso il download di riserva.");
+                    console.log("Scelta cartella manuale saltata, uso download standard.");
                 }
             }
 
-            // Metodo di fallback con download diretto
+            // Metodo universale compatibile con iOS (Safari) e Android
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
             a.download = filename;
@@ -304,27 +319,36 @@
             document.body.removeChild(a);
         }
 
-        async function gestisciSalvataggioECondivisione(canale) {
-            if (!fotoBase64Originale) { alert("Scatta o seleziona prima una foto!"); return; }
+        async function salvaFotoMapCamera() {
+            if (!fileSelezionato) { alert("Scatta prima una foto!"); return; }
 
-            const categoria = document.getElementById('categoria').value;
-            const note = document.getElementById('note').value;
             let numeroProgressivo = parseInt(localStorage.getItem('counter_mapcamera') || '0') + 1;
             localStorage.setItem('counter_mapcamera', numeroProgressivo);
             const idFormattato = `#${String(numeroProgressivo).padStart(3, '0')}`;
 
-            applicaWatermarkGPSMapCamera(fotoBase64Originale, idFormattato, categoria, note, async function(fotoWatermarked) {
+            // Elemento nascosto per passare l'ID corrente alla funzione di disegno
+            let tempInput = document.getElementById('temp-id-progressivo');
+            if(!tempInput) {
+                tempInput = document.createElement('input');
+                tempInput.type = 'hidden';
+                tempInput.id = 'temp-id-progressivo';
+                document.body.appendChild(tempInput);
+            }
+            tempInput.value = idFormattato;
+
+            const risoluzioneScelta = document.getElementById('risoluzione').value;
+
+            elaboraERidimensionaImmagine(fileSelezionato, risoluzioneScelta, async function(fotoWatermarked) {
                 const blob = dataURLtoBlob(fotoWatermarked);
                 const filename = `MapCamera_${idFormattato.replace('#','')}.jpg`;
 
-                // Salva automaticamente nella cartella MapCamera
-                await salvaNellaCartellaMapCamera(blob, filename);
+                await scaricaInCartellaMapCamera(blob, filename);
 
                 const nuovaSegnalazione = {
                     id: Date.now(),
                     progressivo: idFormattato,
-                    categoria,
-                    note,
+                    categoria: document.getElementById('categoria').value,
+                    note: document.getElementById('note').value,
                     luogo: `${coordinateAttuali.citta} - ${coordinateAttuali.indirizzo}`,
                     foto: fotoWatermarked,
                     data: coordinateAttuali.dataOra,
@@ -335,73 +359,23 @@
                 archivio.unshift(nuovaSegnalazione);
                 localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
                 mostraSegnalazioni();
-
-                const fileDaCondividere = new File([blob], filename, { type: 'image/jpeg' });
-
-                if (canale === 'whatsapp' || canale === 'share') {
-                    if (navigator.share && navigator.canShare && navigator.canShare({ files: [fileDaCondividere] })) {
-                        navigator.share({ files: [fileDaCondividere] }).catch(() => {});
-                    } else {
-                        alert("Condivisione nativa non supportata su questo browser. La foto è stata salvata in MapCamera.");
-                    }
-                }
-
                 resetForm();
+                alert("Foto salvata con successo!");
             });
         }
 
-        function condividiSingola(id) {
+        function scaricaSingola(id) {
             let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
             let item = archivio.find(s => s.id === id);
             if (!item) return;
 
             const blob = dataURLtoBlob(item.foto);
-            const fileDaCondividere = new File([blob], item.filename, { type: 'image/jpeg' });
-
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: [fileDaCondividere] })) {
-                navigator.share({ files: [fileDaCondividere] }).catch(err => console.log(err));
-            } else {
-                const a = document.createElement('a');
-                a.href = URL.createObjectURL(blob);
-                a.download = item.filename;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
-        }
-
-        function condividiSelezionate() {
-            const checkboxes = document.querySelectorAll('.seleziona-foto:checked');
-            if (checkboxes.length === 0) {
-                alert("Seleziona almeno una foto dall'archivio spuntando la casella corrispondente.");
-                return;
-            }
-
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            let filesDaCondividere = [];
-
-            checkboxes.forEach(chk => {
-                let id = parseInt(chk.value);
-                let item = archivio.find(s => s.id === id);
-                if (item) {
-                    const blob = dataURLtoBlob(item.foto);
-                    filesDaCondividere.push(new File([blob], item.filename, { type: 'image/jpeg' }));
-                }
-            });
-
-            if (navigator.share && navigator.canShare && navigator.canShare({ files: filesDaCondividere })) {
-                navigator.share({ files: filesDaCondividere }).catch(err => console.log(err));
-            } else {
-                alert("La condivisione multipla diretta non è supportata da questo browser. Verranno scaricate singolarmente.");
-                filesDaCondividere.forEach(file => {
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(file);
-                    a.download = file.name;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                });
-            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = item.filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
         }
 
         function eliminaSegnalazione(id) {
@@ -422,7 +396,7 @@
             document.getElementById('note').value = "";
             document.getElementById('preview-container').classList.add('hidden');
             document.getElementById('upload-placeholder').classList.remove('hidden');
-            fotoBase64Originale = null;
+            fileSelezionato = null;
         }
 
         function mostraSegnalazioni() {
@@ -432,7 +406,7 @@
             
             lista.innerHTML = "";
             if (archivio.length === 0) {
-                lista.innerHTML = `<p class="text-xs text-gray-500 text-center py-4 bg-gray-800 rounded-xl border border-gray-800">Nessuna foto salvata nella cartella MapCamera</p>`;
+                lista.innerHTML = `<p class="text-xs text-gray-500 text-center py-4 bg-gray-800 rounded-xl border border-gray-800">Nessuna foto salvata</p>`;
                 return;
             }
 
@@ -440,7 +414,6 @@
                 const div = document.createElement('div');
                 div.className = "bg-gray-800 p-3 rounded-xl border border-gray-700 space-y-2 flex items-center gap-3";
                 div.innerHTML = `
-                    <input type="checkbox" value="${item.id}" class="seleziona-foto w-4 h-4 accent-blue-600 rounded cursor-pointer flex-shrink-0">
                     <img src="${item.foto}" class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border border-gray-600">
                     <div class="text-xs space-y-1 overflow-hidden w-full">
                         <div class="flex justify-between items-center">
@@ -450,8 +423,8 @@
                         <p class="text-blue-300 truncate">📍 ${item.luogo || 'Posizione non specificata'}</p>
                         <p class="text-gray-400 truncate">Note: ${item.note || 'Nessuna'}</p>
                         <div class="flex gap-2 pt-1 justify-end">
-                            <button onclick="condividiSingola(${item.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition">
-                                📤 Condividi
+                            <button onclick="scaricaSingola(${item.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition">
+                                📥 Scarica di nuovo
                             </button>
                             <button onclick="eliminaSegnalazione(${item.id})" class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold px-2.5 py-1 rounded transition">
                                 🗑️ Elimina
