@@ -12,7 +12,7 @@
     <meta name="apple-mobile-web-app-title" content="GPS Camera">
     <meta name="theme-color" content="#030712">
 
-    <!-- Manifest PWA integrato -->
+    <!-- Manifest PWA integrato (Aggiornato con map.jpg) -->
     <link rel="manifest" href='data:application/manifest+json,{
         "name": "GPS Map Camera SP",
         "short_name": "GPS Camera",
@@ -22,16 +22,17 @@
         "theme_color": "%23030712",
         "icons": [
             {
-                "src": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=",
+                "src": "map.jpg",
                 "sizes": "512x512",
-                "type": "image/jpeg"
+                "type": "image/jpeg",
+                "purpose": "any maskable"
             }
         ]
     }'>
 
     <!-- Icona App -->
-    <link rel="icon" type="image/jpeg" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=">
-    <link rel="apple-touch-icon" href="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=">
+    <link rel="icon" type="image/jpeg" href="map.jpg">
+    <link rel="apple-touch-icon" href="map.jpg">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -48,9 +49,7 @@
             position: fixed;
             touch-action: pan-y;
         }
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
     </style>
 </head>
 <body class="flex flex-col select-none">
@@ -66,6 +65,10 @@
             </p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
+            <!-- Tasto Installazione PWA (Inizialmente nascosto) -->
+            <button id="btn-install" class="hidden bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 text-[10px] px-2 py-1 rounded-lg font-medium flex items-center gap-1 active:scale-95 transition" title="Installa App">
+                <i class="fa-solid fa-download"></i> Installa App
+            </button>
             <button id="btn-reset-counter" class="bg-gray-800 hover:bg-gray-700 text-amber-400 border border-gray-700 text-[10px] px-2 py-1 rounded-lg font-medium flex items-center gap-1 active:scale-95 transition" title="Resetta contatore">
                 <i class="fa-solid fa-rotate-right"></i> Reset #
             </button>
@@ -94,7 +97,13 @@
     </main>
 
     <!-- CONTROLLI INFERIORI -->
-    <footer class="w-full bg-gray-900 px-4 py-3 flex items-center justify-around border-t border-gray-800 z-10 shrink-0">
+    <footer class="w-full bg-gray-900 px-3 py-3 flex items-center justify-between border-t border-gray-800 z-10 shrink-0 gap-2">
+        <!-- Tasto Esci -->
+        <button id="btn-exit" class="flex flex-col items-center justify-center bg-red-900/40 text-red-400 border border-red-800/50 rounded-xl w-12 h-12 shrink-0 active:scale-95 transition shadow-lg">
+            <i class="fa-solid fa-power-off text-sm mb-0.5"></i>
+            <span class="text-[8px] font-bold">ESCI</span>
+        </button>
+
         <button id="btn-gallery-open" class="relative w-12 h-12 rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden focus:outline-none shadow-lg active:scale-95 transition shrink-0 flex items-center justify-center">
             <img id="preview-thumb" src="" alt="" class="w-full h-full object-cover hidden">
             <div id="preview-placeholder" class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
@@ -107,7 +116,7 @@
             <div class="bg-white rounded-full w-[52px] h-[52px]"></div>
         </button>
 
-        <div class="flex flex-col justify-center bg-gray-800/90 border border-gray-700 px-2.5 py-1.5 rounded-xl shrink-0 w-32 shadow-lg">
+        <div class="flex flex-col justify-center bg-gray-800/90 border border-gray-700 px-2.5 py-1.5 rounded-xl shrink-0 w-[110px] shadow-lg">
             <span class="text-[9px] text-gray-400 font-semibold mb-0.5 flex items-center gap-1">
                 <i class="fa-solid fa-tag text-amber-400"></i> Categoria
             </span>
@@ -124,12 +133,13 @@
     <div id="gallery-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex flex-col">
         <div class="p-3 bg-gray-900 flex justify-between items-center border-b border-gray-800 shrink-0">
             <div class="flex items-center gap-2">
-                <h2 class="font-bold text-sm">Galleria Foto</h2>
-                <span id="gallery-total-count" class="text-[10px] bg-gray-800 px-2 py-0.5 rounded-full text-gray-400">0</span>
+                <button id="btn-close-gallery" class="flex items-center gap-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg font-medium transition border border-gray-700">
+                    <i class="fa-solid fa-arrow-left"></i> Indietro
+                </button>
             </div>
-            <div class="flex gap-2">
-                <button id="btn-toggle-select" class="text-xs bg-gray-800 hover:bg-gray-700 px-2.5 py-1 rounded-lg font-medium transition">Seleziona</button>
-                <button id="btn-close-gallery" class="w-7 h-7 rounded-full bg-gray-800 flex items-center justify-center text-gray-400 hover:text-white"><i class="fa-solid fa-xmark text-sm"></i></button>
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-bold text-gray-300"><span id="gallery-total-count" class="text-amber-400">0</span> Foto</span>
+                <button id="btn-toggle-select" class="text-xs bg-gray-800 hover:bg-gray-700 px-2.5 py-1.5 rounded-lg font-medium transition border border-gray-700">Seleziona</button>
             </div>
         </div>
 
@@ -168,6 +178,25 @@
 
     <!-- SCRIPT APPLICATIVO -->
     <script>
+        // Gestione Installazione PWA
+        let deferredPrompt;
+        const installBtn = document.getElementById('btn-install');
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+        });
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    installBtn.classList.add('hidden');
+                }
+                deferredPrompt = null;
+            }
+        });
+
         // Service Worker condizionale offline
         if ('serviceWorker' in navigator) {
             const swCode = `
@@ -273,75 +302,19 @@
             }
         });
 
+        // Uscita dall'app
+        document.getElementById('btn-exit').addEventListener('click', () => {
+            if (confirm("Vuoi chiudere l'applicazione?")) {
+                window.close(); // Nota: i browser limitano window.close() via script, ma funziona bene nelle PWA installate.
+            }
+        });
+
         window.addEventListener('online', () => offlineBadge.classList.add('hidden'));
         window.addEventListener('offline', () => offlineBadge.classList.remove('hidden'));
 
-        // Scatto foto con miniatura cartina e coordinate GPS
-        document.getElementById('btn-capture').addEventListener('click', () => {
-            const canvas = canvasElem;
-            canvas.width = videoElem.videoWidth || 1280;
-            canvas.height = videoElem.videoHeight || 720;
-            const ctx = canvas.getContext('2d');
-            
-            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-
+        // Funzione per salvare la foto finita
+        function finalizePhoto(canvas, ctx) {
             photoCounter++;
-            const panelX = 40;
-            const panelY = canvas.height - 230;
-            const panelW = 420;
-            const panelH = 190;
-
-            // Box di sfondo
-            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
-            ctx.fillRect(panelX, panelY, panelW, panelH);
-
-            // Miniatura cartina grafica
-            const mapX = panelX + 15;
-            const mapY = panelY + 15;
-            const mapW = 100;
-            const mapH = 160;
-
-            ctx.fillStyle = "#1e293b";
-            ctx.fillRect(mapX, mapY, mapW, mapH);
-
-            ctx.strokeStyle = "#475569";
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.moveTo(mapX, mapY + 40); ctx.lineTo(mapX + mapW, mapY + 40);
-            ctx.moveTo(mapX, mapY + 110); ctx.lineTo(mapX + mapW, mapY + 110);
-            ctx.moveTo(mapX + 50, mapY); ctx.lineTo(mapX + 50, mapY + mapH);
-            ctx.stroke();
-
-            ctx.strokeStyle = "#3b82f6";
-            ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.moveTo(mapX + 20, mapY); ctx.lineTo(mapX + 80, mapY + mapH);
-            ctx.stroke();
-
-            // Segnapunto rosso GPS
-            ctx.fillStyle = "#ef4444";
-            ctx.beginPath();
-            ctx.arc(mapX + 50, mapY + 80, 8, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 2;
-            ctx.stroke();
-
-            const textX = mapX + mapW + 20;
-            
-            ctx.fillStyle = "#F59E0B";
-            ctx.font = "bold 32px sans-serif";
-            ctx.fillText(`#${photoCounter}`, textX, panelY + 45);
-
-            ctx.fillStyle = "#FFFFFF";
-            ctx.font = "bold 18px sans-serif";
-            ctx.fillText(`Lat: ${currentGPS.lat.toFixed(4)}`, textX, panelY + 85);
-            ctx.fillText(`Lon: ${currentGPS.lon.toFixed(4)}`, textX, panelY + 115);
-
-            ctx.fillStyle = "#94a3b8";
-            ctx.font = "14px sans-serif";
-            ctx.fillText(categorySelect.value, textX, panelY + 150);
-
             const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
             
             const now = new Date();
@@ -362,6 +335,85 @@
 
             videoElem.classList.add('opacity-40');
             setTimeout(() => videoElem.classList.remove('opacity-40'), 150);
+        }
+
+        // Scatto foto stile App GPS Map Camera originale
+        document.getElementById('btn-capture').addEventListener('click', () => {
+            const canvas = canvasElem;
+            canvas.width = videoElem.videoWidth || 1280;
+            canvas.height = videoElem.videoHeight || 720;
+            const ctx = canvas.getContext('2d');
+            
+            ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+
+            // Dimensioni e posizione della fascia inferiore stile originale
+            const panelH = 200;
+            const panelY = canvas.height - panelH;
+            
+            // Sfondo scuro semi-trasparente a tutta larghezza
+            ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
+            ctx.fillRect(0, panelY, canvas.width, panelH);
+            ctx.fillStyle = "rgba(255, 152, 0, 0.8)";
+            ctx.fillRect(0, panelY, 8, panelH); // Riga colorata laterale
+
+            // Caricamento mappa di Google (Usa una Static Map tramite proxy o OSM per evitare errori CORS nel Canvas)
+            // Sostituire 'INSERISCI_LA_TUA_API_KEY_QUI' con la vera key. Al momento utilizza OSM per garanzia di funzionamento.
+            const mapImg = new Image();
+            mapImg.crossOrigin = "anonymous"; 
+            
+            // URL Google Maps Static di riferimento:
+            // const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=160x160&maptype=roadmap&markers=color:red%7C${currentGPS.lat},${currentGPS.lon}&key=INSERISCI_LA_TUA_API_KEY_QUI`;
+            
+            // URL Alternativo funzionante senza key (OpenStreetMap formattato per dimensione miniatura):
+            const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=160x160&maptype=mapnik&markers=${currentGPS.lat},${currentGPS.lon},red-pushpin`;
+            
+            mapImg.src = mapUrl;
+
+            mapImg.onload = () => {
+                // Disegna miniatura mappa a sinistra
+                const mapX = 25;
+                const mapY = panelY + 20;
+                ctx.drawImage(mapImg, mapX, mapY, 160, 160);
+                
+                // Bordo bianco per la mappa
+                ctx.strokeStyle = "white";
+                ctx.lineWidth = 3;
+                ctx.strokeRect(mapX, mapY, 160, 160);
+
+                // Testi e informazioni sulla destra della mappa
+                const textX = mapX + 185;
+                const now = new Date();
+                
+                ctx.fillStyle = "white";
+                ctx.font = "bold 26px sans-serif";
+                ctx.fillText(`Coordinate:`, textX, panelY + 45);
+                
+                ctx.font = "24px sans-serif";
+                ctx.fillStyle = "#e2e8f0";
+                ctx.fillText(`Lat: ${currentGPS.lat.toFixed(6)}`, textX, panelY + 80);
+                ctx.fillText(`Lon: ${currentGPS.lon.toFixed(6)}`, textX, panelY + 115);
+                
+                ctx.fillStyle = "#fbbf24";
+                ctx.font = "bold 22px sans-serif";
+                ctx.fillText(`Data: ${now.toLocaleDateString()}  Ora: ${now.toLocaleTimeString()}`, textX, panelY + 150);
+                
+                ctx.fillStyle = "#94a3b8";
+                ctx.font = "20px sans-serif";
+                ctx.fillText(`Categoria: ${categorySelect.value} | Riferimento: #${photoCounter + 1}`, textX, panelY + 180);
+
+                finalizePhoto(canvas, ctx);
+            };
+
+            mapImg.onerror = () => {
+                // Fallback nel caso in cui la mappa non carichi (es. offline)
+                ctx.fillStyle = "#333";
+                ctx.fillRect(25, panelY + 20, 160, 160);
+                ctx.fillStyle = "white";
+                ctx.font = "20px sans-serif";
+                ctx.fillText("Mappa non", 45, panelY + 90);
+                ctx.fillText("disponibile", 45, panelY + 120);
+                finalizePhoto(canvas, ctx);
+            };
         });
 
         function updatePreviewUI() {
@@ -447,7 +499,7 @@
             singlePhotoModal.classList.add('hidden');
         });
 
-        // Condivisione pulita (solo file immagine senza testo forzato)
+        // Condivisione pulita
         document.getElementById('btn-single-share').addEventListener('click', async () => {
             const photo = photos.find(p => p.id === currentActivePhotoId);
             if (!photo) return;
