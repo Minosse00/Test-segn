@@ -1,528 +1,609 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="it" class="h-full">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPS Map Camera - Condivisione Pulita</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GPS Map Camera</title>
+    
+    <!-- Web App Manifest embedded as a Data URL to ensure full installability in Chrome without external hosting issues -->
+    <link rel="manifest" id="pwa-manifest">
+    <meta name="theme-color" content="#1e40af">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="GPS Map Cam">
+
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>.hidden-input { display: none; }</style>
+    <!-- Leaflet CSS for Map View -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #0f172a; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
 </head>
-<body class="bg-gray-900 font-sans antialiased pb-10 text-white" onload="inizializzaApp()">
-
-    <div id="status-rete" class="bg-green-600 text-white text-xs font-bold text-center py-1 transition-all">
-        Connesso a Internet
-    </div>
-
-    <main class="max-w-md mx-auto p-4 space-y-4">
-
-        <!-- AREA FOTOCAMERA / INTERFACCIA GPS MAP CAMERA -->
-        <div class="bg-gray-800 rounded-2xl p-4 shadow-xl border border-gray-700 space-y-4">
-            
-            <div class="flex flex-col items-center justify-center border-2 border-dashed border-gray-600 rounded-xl overflow-hidden bg-gray-950 aspect-video relative">
-                <!-- Input Fotocamera Diretto (Compatibile Android & iOS) -->
-                <input type="file" accept="image/*" capture="environment" id="camera-input" class="hidden-input" onchange="previewImage(event)">
-                
-                <div id="upload-placeholder" class="text-center p-4 w-full">
-                    <p class="text-xs text-gray-400 mb-3 font-bold uppercase tracking-wider">Pronto per lo scatto</p>
-                    <button type="button" onclick="document.getElementById('camera-input').click()" class="bg-blue-600 hover:bg-blue-500 text-white text-sm font-bold py-3 px-6 rounded-xl transition flex items-center justify-center gap-2 shadow-lg mx-auto">
-                        📸 Scatta Foto GPS
-                    </button>
-                </div>
-                
-                <!-- Contenitore Immagine con Template GPS Map Camera Sovrapposto -->
-                <div id="preview-container" class="hidden absolute inset-0 w-full h-full">
-                    <img id="preview" class="w-full h-full object-cover cursor-pointer" alt="Anteprima" onclick="document.getElementById('camera-input').click()">
-                    
-                    <!-- Overlay stile GPS Map Camera -->
-                    <div class="absolute bottom-0 left-0 right-0 bg-black/80 p-2.5 flex items-center gap-2.5 border-t border-blue-500/50 backdrop-blur-sm pointer-events-none">
-                        <div class="w-12 h-12 bg-slate-900 border-2 border-blue-500 rounded flex items-center justify-center text-lg flex-shrink-0 shadow">
-                            📍
-                        </div>
-                        <div class="text-[10px] leading-tight text-white space-y-0.5 overflow-hidden">
-                            <p id="overlay-citta" class="font-bold text-blue-400 truncate uppercase">Località in corso...</p>
-                            <p id="overlay-indirizzo" class="text-gray-200 truncate">Indirizzo...</p>
-                            <p id="overlay-coords" class="text-gray-300 font-mono">Lat: 0.0000 | Long: 0.0000</p>
-                            <p id="overlay-data" class="text-yellow-400 font-semibold">Data e Ora</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- CONTROLLI: RISOLUZIONE E CATEGORIA -->
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Risoluzione Foto</label>
-                    <select id="risoluzione" class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm outline-none text-white">
-                        <option value="1280">Media (1280px)</option>
-                        <option value="1920" selected>Alta (Full HD)</option>
-                        <option value="originale">Originale (Massima)</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Tipo Problema</label>
-                    <select id="categoria" class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm outline-none text-white" onchange="aggiornaOverlayDime()">
-                        <option value="🕳️ Buca stradale">🕳️ Buche</option>
-                        <option value="🌱 Taglio erba">🌱 Taglio Erba</option>
-                        <option value="🛑 Segnaletica">🛑 Segnaletica</option>
-                        <option value="⚙️ Altro">⚙️ Altro</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-2">
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Posizione GPS</label>
-                    <button type="button" onclick="ottieniPosizione()" class="w-full bg-blue-600 hover:bg-blue-700 p-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1">
-                        📍 <span id="gps-btn-text">Aggiorna GPS</span>
-                    </button>
-                </div>
-                <div>
-                    <label class="block text-xs font-medium text-gray-400 mb-1">Note (opzionale)</label>
-                    <input type="text" id="note" oninput="aggiornaOverlayDime()" class="w-full p-2.5 bg-gray-700 border border-gray-600 rounded-xl text-sm outline-none text-white" placeholder="Es. civico 4...">
-                </div>
-            </div>
-            
-            <p id="gps-status" class="text-[11px] text-gray-300 font-mono text-center truncate bg-gray-900 p-2 rounded border border-gray-700">Rilevamento GPS automatico...</p>
-        </div>
-
-        <!-- ARCHIVIO / GALLERIA INTERNA -->
-        <div class="space-y-3">
-            <div class="flex justify-between items-center px-1">
-                <h2 class="text-sm font-bold text-gray-400 tracking-wider uppercase">Galleria Interna</h2>
-                <div class="space-x-2 text-xs">
-                    <button onclick="resetContatore()" class="text-yellow-400 hover:text-yellow-300 underline" title="Resetta numerazione progressiva">Reset Num.</button>
-                    <button onclick="svuotaArchivio()" class="text-red-400 hover:text-red-300 underline">Elimina Tutti</button>
-                </div>
-            </div>
-
-            <!-- Controlli Selezione Multipla (Azioni in Blocco) -->
-            <div id="batch-controls" class="hidden flex justify-between items-center bg-gray-800 p-2 rounded-xl border border-gray-700 text-xs">
-                <span id="selected-count" class="text-gray-300 font-medium">0 selezionate</span>
-                <div class="flex gap-1.5">
-                    <button onclick="condividiSelezionate()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-2.5 py-1 rounded transition">
-                        📤 Condividi Selezionate
-                    </button>
-                    <button onclick="eliminaSelezionate()" class="bg-red-600 hover:bg-red-500 text-white font-bold px-2.5 py-1 rounded transition">
-                        🗑️ Elimina Selezionate
-                    </button>
-                </div>
-            </div>
-
-            <div id="lista-segnalazioni" class="space-y-3"></div>
-        </div>
-    </main>
-
-    <!-- MODALE VISUALIZZAZIONE FOTO A SCHERMO INTERO -->
-    <div id="modal-foto" class="fixed inset-0 bg-black/90 z-50 hidden flex flex-col items-center justify-center p-4">
-        <button onclick="chiudiModal()" class="absolute top-4 right-4 bg-gray-800 text-white font-bold px-3 py-1.5 rounded-full text-sm border border-gray-600">✕ Chiudi</button>
-        <img id="modal-img" class="max-w-full max-h-[80vh] object-contain rounded-lg border border-gray-700 shadow-2xl mb-4" alt="Fullscreen">
-        <div id="modal-info" class="text-center text-xs text-gray-300 space-y-1"></div>
-    </div>
+<body class="bg-slate-950 text-slate-100 h-full flex flex-col overflow-hidden">
 
     <script>
-        let coordinateAttuali = { lat: "0.000000", lng: "0.000000", citta: "Sconosciuta", indirizzo: "Posizione non rilevata", dataOra: "" };
-        let fileSelezionato = null;
+        // Generate and inject the PWA manifest dynamically with custom SVG icon data URI matching your requested style
+        const svgIconStr = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+            <defs>
+                <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stop-color="#3b82f6"/>
+                    <stop offset="100%" stop-color="#1d4ed8"/>
+                </linearGradient>
+                <linearGradient id="pinGrad" x1="0%" y1="0%" x2="0%\" y2="100%">
+                    <stop offset="0%" stop-color="#fbbf24"/>
+                    <stop offset="100%" stop-color="#f97316"/>
+                </linearGradient>
+            </defs>
+            <rect width="512" height="512" rx="110" fill="url(#bgGrad)"/>
+            <!-- Map grid background arc -->
+            <path d="M 40 400 Q 256 320 472 400 L 472 472 Q 256 512 40 472 Z" fill="#0f172a" opacity="0.4"/>
+            <path d="M 60 410 Q 256 340 452 410" stroke="#60a5fa" stroke-width="6" fill="none" opacity="0.6"/>
+            <path d="M 120 370 L 220 480" stroke="#60a5fa" stroke-width="4" fill="none" opacity="0.5"/>
+            <path d="M 280 350 L 380 470" stroke="#60a5fa" stroke-width="4" fill="none" opacity="0.5"/>
+            <!-- Corner framing brackets -->
+            <path d="M 60 140 L 60 80 Q 60 60 80 60 L 140 60" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round"/>
+            <path d="M 452 140 L 452 80 Q 452 60 432 60 L 372 60" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round"/>
+            <path d="M 60 372 L 60 432 Q 60 452 80 452 L 140 452" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round"/>
+            <path d="M 452 372 L 452 432 Q 452 452 432 452 L 372 452" stroke="#ffffff" stroke-width="16" fill="none" stroke-linecap="round"/>
+            <!-- Location Pin -->
+            <path d="M 256 60 C 195 60 146 109 146 170 C 146 250 256 380 256 380 C 256 380 366 250 366 170 C 366 109 317 60 256 60 Z" fill="url(#pinGrad)" stroke="#ffffff" stroke-width="12"/>
+            <!-- Camera lens inside pin -->
+            <circle cx="256" cy="170" r="64" fill="#0f172a" stroke="#cbd5e1" stroke-width="8"/>
+            <circle cx="256" cy="170" r="44" fill="#1e293b"/>
+            <circle cx="256" cy="170" r="24" fill="#3b82f6"/>
+            <circle cx="242" cy="156" r="8" fill="#ffffff" opacity="0.8"/>
+        </svg>`;
 
-        function inizializzaApp() {
-            ottieniPosizione();
-            mostraSegnalazioni();
-        }
+        const encodedSvg = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgIconStr)));
 
-        function dataURLtoBlob(dataurl) {
-            const arr = dataurl.split(',');
-            const mime = arr[0].match(/:(.*?);/)[1];
-            const bstr = atob(arr[1]);
-            let n = bstr.length;
-            const u8arr = new Uint8Array(n);
-            while (n--) {
-                u8arr[n] = bstr.charCodeAt(n);
-            }
-            return new Blob([u8arr], { type: mime });
-        }
-
-        function aggiornaStatoRete() {
-            const bar = document.getElementById('status-rete');
-            if (bar) {
-                if (navigator.onLine) {
-                    bar.innerText = "Connesso a Internet";
-                    bar.className = "bg-green-600 text-white text-xs font-bold text-center py-1";
-                } else {
-                    bar.innerText = "Modalità Offline";
-                    bar.className = "bg-orange-600 text-white text-xs font-bold text-center py-1";
+        const manifestData = {
+            "name": "GPS Map Camera",
+            "short_name": "GPS Camera",
+            "start_url": "./index.html",
+            "display": "standalone",
+            "background_color": "#0f172a",
+            "theme_color": "#1e40af",
+            "icons": [
+                {
+                    "src": encodedSvg,
+                    "sizes": "512x512",
+                    "type": "image/svg+xml",
+                    "purpose": "any maskable"
                 }
-            }
+            ]
+        };
+
+        const manifestBlob = new Blob([JSON.stringify(manifestData)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        document.getElementById('pwa-manifest').setAttribute('href', manifestURL);
+
+        // Register dummy service worker via Blob to satisfy Chrome PWA install criteria fully
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', (e) => { self.skipWaiting(); });
+                self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
+                self.addEventListener('fetch', (e) => { e.respondWith(fetch(e.request).catch(() => caches.match(e.request))); });
+            `;
+            const swBlob = new Blob([swCode], {type: 'text/javascript'});
+            const swUrl = URL.createObjectURL(swBlob);
+            navigator.serviceWorker.register(swUrl).catch(err => console.log('SW registration error:', err));
         }
-        window.addEventListener('online', aggiornaStatoRete);
-        window.addEventListener('offline', aggiornaStatoRete);
+    </script>
 
-        function aggiornaOverlayDime() {
-            document.getElementById('overlay-citta').innerText = coordinateAttuali.citta.toUpperCase();
-            document.getElementById('overlay-indirizzo').innerText = coordinateAttuali.indirizzo;
-            document.getElementById('overlay-coords').innerText = `Lat: ${coordinateAttuali.lat} | Long: ${coordinateAttuali.lng}`;
-            const cat = document.getElementById('categoria').value;
-            const note = document.getElementById('note').value;
-            let testoData = `${coordinateAttuali.dataOra} - ${cat}`;
-            if(note) testoData += ` | Note: ${note}`;
-            document.getElementById('overlay-data').innerText = testoData;
-        }
+    <header class="glass-panel border-b border-slate-800 px-4 py-3 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-orange-500 flex items-center justify-center shadow-lg shadow-blue-500/20 overflow-hidden">
+                <svg viewBox="0 0 512 512" class="w-7 h-7 text-white">
+                    <path d="M 256 60 C 195 60 146 109 146 170 C 146 250 256 380 256 380 C 256 380 366 250 366 170 C 366 109 317 60 256 60 Z" fill="#f97316" stroke="#ffffff" stroke-width="12"/>
+                    <circle cx="256" cy="170" r="40" fill="#0f172a" stroke="#ffffff" stroke-width="6"/>
+                    <circle cx="256" cy="170" r="16" fill="#3b82f6"/>
+                </svg>
+            </div>
+            <div>
+                <h1 class="font-bold text-base leading-tight tracking-tight">GPS Map Camera</h1>
+                <p id="status-sub" class="text-xs text-slate-400">Acquisizione GPS attiva...</p>
+            </div>
+        </div>
 
-        function previewImage(event) {
-            const files = event.target.files;
-            if (!files || files.length === 0) return;
-            fileSelezionato = files[0];
+        <div class="flex items-center space-x-2">
+            <button id="install-btn" class="hidden bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-medium text-xs px-3 py-2 rounded-xl shadow-lg transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-download"></i>
+                <span>Installa App</span>
+            </button>
+            <button id="toggle-view-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl transition text-sm flex items-center space-x-2 border border-slate-700">
+                <i class="fa-solid fa-map-location-dot text-amber-400"></i>
+                <span class="hidden sm:inline">Mappa</span>
+            </button>
+            <button id="settings-btn" class="bg-slate-800 hover:bg-slate-700 text-slate-200 p-2.5 rounded-xl transition text-sm border border-slate-700">
+                <i class="fa-solid fa-gear"></i>
+            </button>
+        </div>
+    </header>
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                document.getElementById('preview').src = e.target.result;
-                document.getElementById('preview-container').classList.remove('hidden');
-                document.getElementById('upload-placeholder').classList.add('hidden');
-                aggiornaOverlayDime();
-                
-                elaboraESalvaNellArchivio(fileSelezionato);
-            }
-            reader.readAsDataURL(fileSelezionato);
-        }
-
-        function ottieniPosizione() {
-            const status = document.getElementById('gps-status');
-            const btnText = document.getElementById('gps-btn-text');
-            if (!navigator.geolocation) { status.innerText = "GPS non supportato"; return; }
+    <main class="flex-1 relative overflow-hidden flex flex-col md:flex-row">
+        
+        <!-- Camera Section -->
+        <div id="camera-container" class="flex-1 relative bg-black flex flex-col items-center justify-center overflow-hidden">
+            <!-- Video feed -->
+            <video id="camera-preview" autoplay playsinline muted class="absolute inset-0 w-full h-full object-cover"></video>
             
-            btnText.innerText = "Ricerca...";
-            status.innerText = "Rilevamento posizione in corso...";
+            <!-- Canvas for snapshot rendering -->
+            <canvas id="photo-canvas" class="hidden"></canvas>
 
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const lat = position.coords.latitude.toFixed(6);
-                    const lng = position.coords.longitude.toFixed(6);
-                    const now = new Date();
-                    const dataOra = `${now.toLocaleDateString('it-IT')} ${now.toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'})}`;
-                    
-                    coordinateAttuali = { lat, lng, citta: "Località rilevata", indirizzo: `Lat: ${lat}, Lng: ${lng}`, dataOra };
-
-                    try {
-                        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`, {
-                            headers: { 'User-Agent': 'MapCameraApp/1.0' }
-                        });
-                        const data = await response.json();
-                        if (data && data.address) {
-                            const addr = data.address;
-                            const localita = addr.city || addr.town || addr.village || addr.municipality || "Zona Rurale";
-                            const nazione = addr.country || "Italia";
-                            let strada = addr.road || addr.pedestrian || addr.suburb || "Indirizzo non specificato";
-
-                            coordinateAttuali.citta = `${localita}, ${nazione}`;
-                            coordinateAttuali.indirizzo = strada;
-                        }
-                    } catch (e) {}
-
-                    btnText.innerText = "Rilevato ✓";
-                    status.innerText = `📍 ${coordinateAttuali.citta} - ${coordinateAttuali.indirizzo}`;
-                    aggiornaOverlayDime();
-                },
-                (error) => {
-                    btnText.innerText = "Rileva GPS";
-                    status.innerText = "Errore GPS: Attiva la localizzazione.";
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        }
-
-        function elaboraESalvaNellArchivio(file) {
-            let numeroProgressivo = parseInt(localStorage.getItem('counter_mapcamera') || '0') + 1;
-            localStorage.setItem('counter_mapcamera', numeroProgressivo);
-            const idFormattato = `#${String(numeroProgressivo).padStart(3, '0')}`;
-            const risoluzioneScelta = document.getElementById('risoluzione').value;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    let w = img.width;
-                    let h = img.height;
-
-                    if (risoluzioneScelta !== 'originale') {
-                        const targetMax = parseInt(risoluzioneScelta);
-                        if (w > h && w > targetMax) {
-                            h = Math.round((h * targetMax) / w);
-                            w = targetMax;
-                        } else if (h >= w && h > targetMax) {
-                            w = Math.round((w * targetMax) / h);
-                            h = targetMax;
-                        }
-                    }
-
-                    const canvas = document.createElement('canvas');
-                    canvas.width = w;
-                    canvas.height = h;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, w, h);
-
-                    const cardHeight = Math.floor(canvas.height * 0.22);
-                    const cardY = canvas.height - cardHeight;
-                    const padding = Math.floor(cardHeight * 0.08);
-
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
-                    ctx.fillRect(0, cardY, canvas.width, cardHeight);
-
-                    const mapWidth = Math.floor(cardHeight * 0.85);
-                    const mapHeight = Math.floor(cardHeight * 0.84);
-                    const mapX = padding;
-                    const mapY = cardY + padding;
-
-                    ctx.fillStyle = '#1e293b';
-                    ctx.fillRect(mapX, mapY, mapWidth, mapHeight);
-                    ctx.strokeStyle = '#3b82f6';
-                    ctx.lineWidth = 3;
-                    ctx.strokeRect(mapX, mapY, mapWidth, mapHeight);
-
-                    ctx.font = `${Math.floor(mapHeight * 0.4)}px sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText('📍', mapX + (mapWidth / 2), mapY + (mapHeight / 2));
-
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'top';
-                    const textX = mapX + mapWidth + padding;
-                    let currentY = mapY;
-                    const lineSpacing = Math.floor(cardHeight * 0.14);
-
-                    ctx.font = `bold ${Math.floor(cardHeight * 0.12)}px Arial`;
-                    ctx.fillStyle = '#60a5fa';
-                    ctx.fillText(coordinateAttuali.citta.toUpperCase(), textX, currentY);
-
-                    currentY += lineSpacing;
-                    ctx.font = `${Math.floor(cardHeight * 0.10)}px Arial`;
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillText(coordinateAttuali.indirizzo, textX, currentY);
-
-                    currentY += lineSpacing;
-                    ctx.fillStyle = '#cbd5e1';
-                    ctx.fillText(`Lat: ${coordinateAttuali.lat} | Long: ${coordinateAttuali.lng}`, textX, currentY);
-
-                    currentY += lineSpacing;
-                    ctx.fillStyle = '#facc15';
-                    const categoria = document.getElementById('categoria').value;
-                    const noteText = document.getElementById('note').value;
-                    ctx.fillText(`${coordinateAttuali.dataOra} - ${idFormattato} ${categoria}`, textX, currentY);
-
-                    if (noteText) {
-                        currentY += lineSpacing;
-                        ctx.fillStyle = '#9ca3af';
-                        ctx.fillText(`Note: ${noteText}`, textX, currentY);
-                    }
-
-                    const fotoWatermarked = canvas.toDataURL('image/jpeg', 0.90);
-                    const filename = `MapCamera_${idFormattato.replace('#','')}.jpg`;
-
-                    const nuovaSegnalazione = {
-                        id: Date.now(),
-                        progressivo: idFormattato,
-                        categoria: categoria,
-                        note: noteText,
-                        luogo: `${coordinateAttuali.citta} - ${coordinateAttuali.indirizzo}`,
-                        foto: fotoWatermarked,
-                        data: coordinateAttuali.dataOra,
-                        filename: filename
-                    };
-
-                    let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-                    archivio.unshift(nuovaSegnalazione);
-                    localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
-                    
-                    mostraSegnalazioni();
-                    resetForm();
-                };
-                img.src = e.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function scaricaFotoSingola(id) {
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            let item = archivio.find(s => s.id === id);
-            if (!item) return;
-
-            const blob = dataURLtoBlob(item.foto);
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = item.filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-        }
-
-        async function condividiFoto(id) {
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            let item = archivio.find(s => s.id === id);
-            if (!item) return;
-
-            const blob = dataURLtoBlob(item.foto);
-            const file = new File([blob], item.filename, { type: 'image/jpeg' });
-
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    // Condivisione solo del file immagine senza testo preimpostato, lasciando spazio alla didascalia dell'app
-                    await navigator.share({
-                        files: [file]
-                    });
-                } catch (error) {
-                    if (error.name !== 'AbortError') {
-                        console.error("Errore di condivisione", error);
-                    }
-                }
-            } else {
-                alert("La condivisione diretta dei file non è supportata da questo browser. Usa il tasto 'Salva'.");
-            }
-        }
-
-        async function condividiSelezionate() {
-            const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-            if (checkboxes.length === 0) return;
-
-            const idsDaCondividere = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            let elementiSelezionati = archivio.filter(s => idsDaCondividere.includes(s.id));
-
-            let filesArray = elementiSelezionati.map(item => {
-                const blob = dataURLtoBlob(item.foto);
-                return new File([blob], item.filename, { type: 'image/jpeg' });
-            });
-
-            if (navigator.canShare && navigator.canShare({ files: filesArray })) {
-                try {
-                    // Condivisione multipla dei soli file immagine senza testo preimpostato
-                    await navigator.share({
-                        files: filesArray
-                    });
-                } catch (error) {
-                    if (error.name !== 'AbortError') {
-                        console.error("Errore condivisione multipla", error);
-                    }
-                }
-            } else {
-                alert("Il tuo browser non supporta la condivisione simultanea di più file.");
-            }
-        }
-
-        function apriModal(fotoUrl, titolo, info) {
-            document.getElementById('modal-img').src = fotoUrl;
-            document.getElementById('modal-info').innerHTML = `<p class="font-bold text-yellow-400">${titolo}</p><p>${info}</p>`;
-            document.getElementById('modal-foto').classList.remove('hidden');
-        }
-
-        function chiudiModal() {
-            document.getElementById('modal-foto').classList.add('hidden');
-        }
-
-        function eliminaSegnalazione(id) {
-            if (!confirm("Vuoi eliminare questa foto dalla galleria interna?")) return;
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            archivio = archivio.filter(s => s.id !== id);
-            localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
-            
-            if (archivio.length === 0) {
-                localStorage.setItem('counter_mapcamera', '0');
-            }
-            
-            mostraSegnalazioni();
-        }
-
-        function svuotaArchivio() {
-            if (!confirm("Vuoi svuotare tutta la galleria interna?")) return;
-            localStorage.removeItem('archivio_mapcamera');
-            localStorage.setItem('counter_mapcamera', '0');
-            mostraSegnalazioni();
-        }
-
-        function aggiornaSelezione() {
-            const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-            const count = checkboxes.length;
-            const batchControls = document.getElementById('batch-controls');
-            const selectedCount = document.getElementById('selected-count');
-
-            if (count > 0) {
-                batchControls.classList.remove('hidden');
-                selectedCount.innerText = `${count} selezionate`;
-            } else {
-                batchControls.classList.add('hidden');
-            }
-        }
-
-        function eliminaSelezionate() {
-            if (!confirm("Vuoi eliminare tutte le foto selezionate?")) return;
-            const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-            const idsDaEliminare = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
-
-            let archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            archivio = archivio.filter(s => !idsDaEliminare.includes(s.id));
-            localStorage.setItem('archivio_mapcamera', JSON.stringify(archivio));
-
-            if (archivio.length === 0) {
-                localStorage.setItem('counter_mapcamera', '0');
-            }
-
-            mostraSegnalazioni();
-        }
-
-        function resetContatore() {
-            let nuovoVal = prompt("Inserisci il numero da cui ripartire con i progressivi (es. 0):", "0");
-            if (nuovoVal !== null && !isNaN(nuovoVal)) {
-                localStorage.setItem('counter_mapcamera', parseInt(nuovoVal));
-                alert(`Contatore reimpostato. La prossima foto sarà #${String(parseInt(nuovoVal) + 1).padStart(3, '0')}`);
-            }
-        }
-
-        function resetForm() {
-            document.getElementById('note').value = "";
-            document.getElementById('preview-container').classList.add('hidden');
-            document.getElementById('upload-placeholder').classList.remove('hidden');
-            fileSelezionato = null;
-        }
-
-        function mostraSegnalazioni() {
-            const lista = document.getElementById('lista-segnalazioni');
-            const batchControls = document.getElementById('batch-controls');
-            if (batchControls) batchControls.classList.add('hidden');
-            if (!lista) return;
-
-            const archivio = JSON.parse(localStorage.getItem('archivio_mapcamera')) || [];
-            
-            lista.innerHTML = "";
-            if (archivio.length === 0) {
-                lista.innerHTML = `<p class="text-xs text-gray-500 text-center py-4 bg-gray-800 rounded-xl border border-gray-800">Nessuna foto in galleria</p>`;
-                return;
-            }
-
-            archivio.forEach(item => {
-                const div = document.createElement('div');
-                div.className = "bg-gray-800 p-3 rounded-xl border border-gray-700 flex items-center gap-3 relative";
-                div.innerHTML = `
-                    <input type="checkbox" data-id="${item.id}" class="item-checkbox absolute top-2 left-2 w-4 h-4 accent-blue-600 cursor-pointer z-10" onchange="aggiornaSelezione()">
-                    <img src="${item.foto}" class="w-16 h-16 object-cover rounded-lg flex-shrink-0 border border-gray-600 cursor-pointer pl-2" onclick="apriModal('${item.foto}', '${item.progressivo} - ${item.categoria}', '${item.luogo} | ${item.data}')" title="Clicca per ingrandire">
-                    <div class="text-xs space-y-1 overflow-hidden w-full">
-                        <div class="flex justify-between items-center">
-                            <span class="font-bold text-yellow-400 ml-3">${item.progressivo} - ${item.categoria}</span>
-                            <span class="text-gray-400 text-[10px]">${item.data}</span>
-                        </div>
-                        <p class="text-blue-300 truncate ml-3">📍 ${item.luogo || 'Posizione non specificata'}</p>
-                        <p class="text-gray-400 truncate ml-3">Note: ${item.note || 'Nessuna'}</p>
-                        <div class="flex gap-1.5 pt-1 justify-end flex-wrap">
-                            <button onclick="condividiFoto(${item.id})" class="bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
-                                📤 Condividi
-                            </button>
-                            <button onclick="scaricaFotoSingola(${item.id})" class="bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
-                                💾 Salva
-                            </button>
-                            <button onclick="eliminaSegnalazione(${item.id})" class="bg-red-600 hover:bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded transition">
-                                🗑️ Elimina
-                            </button>
+            <!-- Live GPS Overlay Tag on Camera -->
+            <div id="camera-overlay-tag" class="absolute bottom-20 left-4 right-4 sm:left-6 sm:right-auto max-w-sm glass-panel p-3.5 rounded-2xl border border-slate-700/60 shadow-2xl pointer-events-none transition-all duration-300">
+                <div class="flex items-start space-x-3">
+                    <div class="bg-orange-500/20 text-orange-400 p-2.5 rounded-xl border border-orange-500/30 shrink-0">
+                        <i class="fa-solid fa-location-dot text-lg"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="overlay-address" class="text-xs font-semibold text-white truncate">Caricamento indirizzo...</p>
+                        <p id="overlay-coords" class="text-[11px] font-mono text-slate-300 mt-0.5">LAT: --, LON: --</p>
+                        <div class="flex items-center space-x-3 mt-1.5 text-[10px] text-slate-400">
+                            <span id="overlay-alt"><i class="fa-solid fa-mountain mr-1"></i>Alt: -- m</span>
+                            <span id="overlay-time"><i class="fa-solid fa-clock mr-1"></i>--:--:--</span>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Camera Controls Bar -->
+            <div class="absolute bottom-4 left-0 right-0 flex items-center justify-around px-8 z-10">
+                <button id="switch-camera-btn" class="w-12 h-12 rounded-full glass-panel hover:bg-slate-800 text-white flex items-center justify-center border border-slate-700 shadow-lg transition">
+                    <i class="fa-solid fa-camera-rotate text-lg"></i>
+                </button>
+                
+                <button id="capture-btn" class="w-20 h-20 rounded-full bg-gradient-to-tr from-orange-500 to-amber-400 p-1.5 shadow-xl shadow-orange-500/30 transform active:scale-95 transition flex items-center justify-center">
+                    <div class="w-full h-full rounded-full border-4 border-white flex items-center justify-center bg-white/20">
+                        <div class="w-12 h-12 rounded-full bg-white shadow-inner"></div>
+                    </div>
+                </button>
+
+                <button id="gallery-trigger-btn" class="w-12 h-12 rounded-full glass-panel hover:bg-slate-800 text-white flex items-center justify-center border border-slate-700 shadow-lg transition relative">
+                    <i class="fa-solid fa-images text-lg"></i>
+                    <span id="gallery-badge" class="absolute -top-1 -right-1 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center hidden">0</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Map View Panel (Hidden by default or toggled) -->
+        <div id="map-panel" class="hidden md:w-96 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 z-10">
+            <div class="p-3.5 border-b border-slate-800 flex items-center justify-between">
+                <h3 class="font-semibold text-sm flex items-center space-x-2">
+                    <i class="fa-solid fa-map text-blue-500"></i>
+                    <span>Posizione GPS Corrente</span>
+                </h3>
+                <button id="recenter-map-btn" class="text-xs text-blue-400 hover:text-blue-300 font-medium">Centra</button>
+            </div>
+            <div id="leaflet-map" class="flex-1 w-full h-64 md:h-full bg-slate-950"></div>
+            <div class="p-3 bg-slate-950 border-t border-slate-800 text-xs text-slate-400 flex justify-between items-center">
+                <span id="map-coords-text">GPS: In attesa...</span>
+                <span id="gps-accuracy" class="text-emerald-400 font-medium">Precisione: --</span>
+            </div>
+        </div>
+
+    </main>
+
+    <div id="gallery-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex flex-col">
+        <div class="p-4 border-b border-slate-800 flex items-center justify-between glass-panel">
+            <h2 class="font-bold text-base flex items-center space-x-2">
+                <i class="fa-solid fa-photo-film text-orange-400"></i>
+                <span>Foto Salvate (<span id="saved-count">0</span>)</span>
+            </h2>
+            <button id="close-gallery-btn" class="w-9 h-9 rounded-full bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+        <div id="gallery-grid" class="flex-1 p-4 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+            <!-- Dynamic photos -->
+        </div>
+        <div class="p-4 bg-slate-900 border-t border-slate-800 text-center">
+            <button id="clear-gallery-btn" class="text-xs text-red-400 hover:text-red-300 font-medium py-2 px-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                Elimina Tutte le Foto
+            </button>
+        </div>
+    </div>
+
+    <div id="preview-modal" class="fixed inset-0 z-50 bg-black/90 backdrop-blur-lg hidden flex flex-col items-center justify-center p-4">
+        <div class="relative max-w-4xl w-full max-h-[80vh] flex flex-col items-center">
+            <img id="preview-img" src="" alt="Captured Photo" class="max-h-[70vh] w-auto rounded-2xl shadow-2xl border border-slate-800 object-contain">
+            <div class="flex items-center space-x-4 mt-6">
+                <a id="download-link" download="gps-map-photo.jpg" class="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold text-sm px-6 py-3 rounded-xl shadow-xl transition flex items-center space-x-2">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Scarica Foto</span>
+                </a>
+                <button id="close-preview-btn" class="bg-slate-800 hover:bg-slate-700 text-white font-medium text-sm px-6 py-3 rounded-xl border border-slate-700 transition">
+                    Chiudi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md rounded-2xl border border-slate-800 p-6 shadow-2xl">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-lg flex items-center space-x-2">
+                    <i class="fa-solid fa-gear text-blue-400"></i>
+                    <span>Impostazioni Overlay</span>
+                </h3>
+                <button id="close-settings-btn" class="text-slate-400 hover:text-white">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="space-y-4 text-sm">
+                <div>
+                    <label class="block text-slate-300 font-medium mb-1">Stile del Timbro GPS</label>
+                    <select id="setting-template" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-blue-500">
+                        <option value="modern">Moderno (Trasparente con icona)</option>
+                        <option value="classic">Classico (Banner scuro in basso)</option>
+                        <option value="minimal">Minimale (Solo coordinate e ora)</option>
+                    </select>
+                </div>
+                <div class="flex items-center justify-between pt-2">
+                    <span class="text-slate-300 font-medium">Mostra data e ora</span>
+                    <input type="checkbox" id="setting-show-time" checked class="w-5 h-5 accent-blue-600 rounded">
+                </div>
+                <div class="flex items-center justify-between pt-1">
+                    <span class="text-slate-300 font-medium">Mostra altitudine</span>
+                    <input type="checkbox" id="setting-show-alt" checked class="w-5 h-5 accent-blue-600 rounded">
+                </div>
+            </div>
+            <div class="mt-6 flex justify-end">
+                <button id="save-settings-btn" class="bg-blue-600 hover:bg-blue-500 text-white font-medium px-5 py-2.5 rounded-xl shadow-lg transition">
+                    Salva Impostazioni
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-24 left-1/2 transform -translate-x-1/2 bg-slate-900/90 border border-slate-700 text-white text-xs font-medium px-4 py-2.5 rounded-xl shadow-2xl backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300 z-50">
+        Messaggio notifica
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // State management
+        let currentStream = null;
+        let useFrontCamera = false;
+        let currentCoords = { lat: 41.9028, lon: 12.4964, alt: 15, accuracy: 5 };
+        let currentAddress = "Roma, RM, Italia";
+        let savedPhotos = JSON.parse(localStorage.getItem('gps_photos') || '[]');
+        let map = null;
+        let marker = null;
+        let deferredPrompt = null;
+
+        // DOM Elements
+        const videoElement = document.getElementById('camera-preview');
+        const canvasElement = document.getElementById('photo-canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const switchCameraBtn = document.getElementById('switch-camera-btn');
+        const toggleViewBtn = document.getElementById('toggle-view-btn');
+        const mapPanel = document.getElementById('map-panel');
+        const overlayAddress = document.getElementById('overlay-address');
+        const overlayCoords = document.getElementById('overlay-coords');
+        const overlayAlt = document.getElementById('overlay-alt');
+        const overlayTime = document.getElementById('overlay-time');
+        const galleryTriggerBtn = document.getElementById('gallery-trigger-btn');
+        const galleryBadge = document.getElementById('gallery-badge');
+        const galleryModal = document.getElementById('gallery-modal');
+        const closeGalleryBtn = document.getElementById('close-gallery-btn');
+        const galleryGrid = document.getElementById('gallery-grid');
+        const clearGalleryBtn = document.getElementById('clear-gallery-btn');
+        const previewModal = document.getElementById('preview-modal');
+        const previewImg = document.getElementById('preview-img');
+        const downloadLink = document.getElementById('download-link');
+        const closePreviewBtn = document.getElementById('close-preview-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const settingsModal = document.getElementById('settings-modal');
+        const closeSettingsBtn = document.getElementById('close-settings-btn');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+        const installBtn = document.getElementById('install-btn');
+        const toast = document.getElementById('toast');
+
+        // Initialize PWA install prompt handling
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            installBtn.classList.remove('hidden');
+        });
+
+        installBtn.addEventListener('click', async () => {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    showToast('App installata con successo!');
+                    installBtn.classList.add('hidden');
+                }
+                deferredPrompt = null;
+            } else {
+                showToast("Per installare, usa il menu di Chrome e seleziona 'Aggiungi a schermata Home'");
+            }
+        });
+
+        // Initialize Camera
+        async function initCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop());
+            }
+            const constraints = {
+                video: {
+                    facingMode: useFrontCamera ? 'user' : 'environment',
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                },
+                audio: false
+            };
+            try {
+                currentStream = await navigator.mediaDevices.getUserMedia(constraints);
+                videoElement.srcObject = currentStream;
+            } catch (err) {
+                console.error("Camera access error:", err);
+                showToast("Errore accesso fotocamera. Verifica i permessi.");
+            }
+        }
+
+        // Initialize GPS Geolocation & Reverse Geocoding
+        function initGPS() {
+            if ('geolocation' in navigator) {
+                navigator.geolocation.watchPosition(
+                    async (position) => {
+                        currentCoords.lat = position.coords.latitude;
+                        currentCoords.lon = position.coords.longitude;
+                        currentCoords.alt = position.coords.altitude ? Math.round(position.coords.altitude) : 25;
+                        currentCoords.accuracy = Math.round(position.coords.accuracy);
+
+                        updateOverlayDisplay();
+                        updateMapPosition();
+
+                        // Fetch reverse geocoding address
+                        try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${currentCoords.lat}&lon=${currentCoords.lon}`);
+                            const data = await res.json();
+                            if (data && data.display_name) {
+                                const parts = data.display_name.split(',');
+                                currentAddress = parts.slice(0, 3).join(',').trim();
+                                overlayAddress.textContent = currentAddress;
+                            }
+                        } catch (e) {
+                            console.error("Geocoding fetch error:", e);
+                        }
+                    },
+                    (error) => {
+                        console.error("GPS error:", error);
+                        document.getElementById('status-sub').textContent = "GPS non disponibile (usando default)";
+                    },
+                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+                );
+            } else {
+                showToast("Geolocalizzazione non supportata dal browser");
+            }
+        }
+
+        // Update live overlay data
+        function updateOverlayDisplay() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString();
+            const dateStr = now.toLocaleDateString();
+
+            overlayCoords.textContent = `LAT: ${currentCoords.lat.toFixed(6)}, LON: ${currentCoords.lon.toFixed(6)}`;
+            overlayAlt.innerHTML = `<i class="fa-solid fa-mountain mr-1"></i>Alt: ${currentCoords.alt}m`;
+            overlayTime.innerHTML = `<i class="fa-solid fa-clock mr-1"></i>${dateStr} ${timeStr}`;
+            document.getElementById('map-coords-text').textContent = `GPS: ${currentCoords.lat.toFixed(4)}, ${currentCoords.lon.toFixed(4)}`;
+            document.getElementById('gps-accuracy').textContent = `Precisione: ±${currentCoords.accuracy}m`;
+        }
+        setInterval(updateOverlayDisplay, 1000);
+
+        // Initialize Leaflet Map
+        function initMap() {
+            if (!map) {
+                map = L.map('leaflet-map', { zoomControl: false }).setView([currentCoords.lat, currentCoords.lon], 16);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(map);
+                marker = L.marker([currentCoords.lat, currentCoords.lon]).addTo(map);
+            }
+        }
+
+        function updateMapPosition() {
+            if (map && marker) {
+                const newLatLng = [currentCoords.lat, currentCoords.lon];
+                marker.setLatLng(newLatLng);
+                map.setView(newLatLng, map.getZoom(), { animate: true });
+            }
+        }
+
+        // Toggle Map / Camera view on mobile
+        let mapVisible = false;
+        toggleViewBtn.addEventListener('click', () => {
+            mapVisible = !mapVisible;
+            if (mapVisible) {
+                mapPanel.classList.remove('hidden');
+                toggleViewBtn.innerHTML = '<i class="fa-solid fa-camera text-blue-400"></i><span class="hidden sm:inline">Camera</span>';
+                setTimeout(() => { if (map) map.invalidateSize(); }, 200);
+            } else {
+                mapPanel.classList.add('hidden');
+                toggleViewBtn.innerHTML = '<i class="fa-solid fa-map-location-dot text-amber-400"></i><span class="hidden sm:inline">Mappa</span>';
+            }
+        });
+
+        document.getElementById('recenter-map-btn').addEventListener('click', () => {
+            if (map) map.setView([currentCoords.lat, currentCoords.lon], 17, { animate: true });
+        });
+
+        // Switch Camera facing mode
+        switchCameraBtn.addEventListener('click', () => {
+            useFrontCamera = !useFrontCamera;
+            initCamera();
+        });
+
+        // Capture Photo with Embedded GPS Map Watermark
+        captureBtn.addEventListener('click', () => {
+            const video = videoElement;
+            const canvas = canvasElement;
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
+            const ctx = canvas.getContext('2d');
+
+            // Draw video frame
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            // Draw GPS Watermark banner at bottom
+            const gradientHeight = 160;
+            const yStart = canvas.height - gradientHeight;
+            
+            const grad = ctx.createLinearGradient(0, yStart, 0, canvas.height);
+            grad.addColorStop(0, 'rgba(15, 23, 42, 0)');
+            grad.addColorStop(0.3, 'rgba(15, 23, 42, 0.85)');
+            grad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, yStart, canvas.width, gradientHeight);
+
+            // Draw Map Mini thumbnail representation / GPS Icon
+            ctx.fillStyle = '#f97316';
+            ctx.beginPath();
+            ctx.arc(60, yStart + 80, 28, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 24px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('📍', 60, yStart + 80);
+
+            // Draw text details
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 22px Inter, sans-serif';
+            ctx.fillText(currentAddress, 110, yStart + 55);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '18px Inter, sans-serif';
+            ctx.fillText(`LAT: ${currentCoords.lat.toFixed(6)}, LON: ${currentCoords.lon.toFixed(6)}`, 110, yStart + 90);
+
+            const nowStr = new Date().toLocaleString();
+            ctx.font = '16px Inter, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText(`Altitudine: ${currentCoords.alt}m  |  Data: ${nowStr}`, 110, yStart + 125);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            
+            // Save to storage
+            const photoObj = {
+                id: Date.now(),
+                url: dataUrl,
+                date: nowStr,
+                address: currentAddress,
+                coords: `${currentCoords.lat.toFixed(4)}, ${currentCoords.lon.toFixed(4)}`
+            };
+            savedPhotos.unshift(photoObj);
+            localStorage.setItem('gps_photos', JSON.stringify(savedPhotos));
+            updateGalleryBadge();
+            showToast('Foto catturata con timbro GPS!');
+
+            // Show preview
+            openPreview(dataUrl);
+        });
+
+        // Gallery Management
+        function updateGalleryBadge() {
+            if (savedPhotos.length > 0) {
+                galleryBadge.textContent = savedPhotos.length;
+                galleryBadge.classList.remove('hidden');
+            } else {
+                galleryBadge.classList.add('hidden');
+            }
+        }
+
+        galleryTriggerBtn.addEventListener('click', () => {
+            renderGalleryGrid();
+            galleryModal.classList.remove('hidden');
+        });
+
+        closeGalleryBtn.addEventListener('click', () => {
+            galleryModal.classList.add('hidden');
+        });
+
+        function renderGalleryGrid() {
+            galleryGrid.innerHTML = '';
+            document.getElementById('saved-count').textContent = savedPhotos.length;
+            if (savedPhotos.length === 0) {
+                galleryGrid.innerHTML = `<div class="col-span-full text-center py-12 text-slate-500">Nessuna foto salvata</div>`;
+                return;
+            }
+            savedPhotos.forEach((photo) => {
+                const div = document.createElement('div');
+                div.className = 'relative aspect-square rounded-xl overflow-hidden bg-slate-900 border border-slate-800 group cursor-pointer';
+                div.innerHTML = `
+                    <img src="${photo.url}" alt="Saved photo" class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent opacity-0 group-hover:opacity-100 transition flex flex-col justify-end p-2.5">
+                        <p class="text-[10px] font-medium text-white truncate">${photo.address}</p>
+                        <p class="text-[9px] text-slate-300">${photo.date}</p>
+                    </div>
                 `;
-                lista.appendChild(div);
+                div.addEventListener('click', () => openPreview(photo.url));
+                galleryGrid.appendChild(div);
             });
         }
+
+        clearGalleryBtn.addEventListener('click', () => {
+            if (confirm('Vuoi eliminare tutte le foto salvate?')) {
+                savedPhotos = [];
+                localStorage.removeItem('gps_photos');
+                renderGalleryGrid();
+                updateGalleryBadge();
+                showToast('Galleria svuotata');
+            }
+        });
+
+        function openPreview(url) {
+            previewImg.src = url;
+            downloadLink.href = url;
+            previewModal.classList.remove('hidden');
+        }
+
+        closePreviewBtn.addEventListener('click', () => {
+            previewModal.classList.add('hidden');
+        });
+
+        // Settings Modal
+        settingsBtn.addEventListener('click', () => settingsModal.classList.remove('hidden'));
+        closeSettingsBtn.addEventListener('click', () => settingsModal.classList.add('hidden'));
+        saveSettingsBtn.addEventListener('click', () => {
+            settingsModal.classList.add('hidden');
+            showToast('Impostazioni salvate');
+        });
+
+        // Toast Helper
+        function showToast(msg) {
+            toast.textContent = msg;
+            toast.classList.remove('opacity-0', 'pointer-events-none');
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'pointer-events-none');
+            }, 3000);
+        }
+
+        // On window load
+        window.onload = () => {
+            initCamera();
+            initGPS();
+            initMap();
+            updateGalleryBadge();
+        };
     </script>
 </body>
 </html>
