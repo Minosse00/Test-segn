@@ -5,32 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>GPS Map Camera SP</title>
     
-    <!-- Meta tag PWA -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="GPS Camera">
     <meta name="theme-color" content="#030712">
 
-    <!-- Manifest PWA integrato (Aggiornato con map.jpg) -->
-    <link rel="manifest" href='data:application/manifest+json,{
-        "name": "GPS Map Camera SP",
-        "short_name": "GPS Camera",
-        "start_url": "./index.html",
-        "display": "standalone",
-        "background_color": "%23030712",
-        "theme_color": "%23030712",
-        "icons": [
-            {
-                "src": "map.jpg",
-                "sizes": "512x512",
-                "type": "image/jpeg",
-                "purpose": "any maskable"
-            }
-        ]
-    }'>
-
-    <!-- Icona App -->
+    <!-- Richiamo al Manifest separato -->
+    <link rel="manifest" href="./manifest.json">
     <link rel="icon" type="image/jpeg" href="map.jpg">
     <link rel="apple-touch-icon" href="map.jpg">
 
@@ -38,23 +20,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         html, body {
-            width: 100%;
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            overflow: hidden;
-            background-color: #030712;
-            color: #ffffff;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            position: fixed;
-            touch-action: pan-y;
+            width: 100%; height: 100%; margin: 0; padding: 0; overflow: hidden;
+            background-color: #030712; color: #ffffff;
+            font-family: system-ui, -apple-system, sans-serif;
+            position: fixed; touch-action: pan-y;
         }
         * { box-sizing: border-box; }
     </style>
 </head>
 <body class="flex flex-col select-none">
 
-    <!-- HEADER / INFO GPS -->
     <header class="w-full bg-gray-900/95 backdrop-blur-md px-3 py-2 border-b border-gray-800 flex justify-between items-center z-10 shrink-0">
         <div class="overflow-hidden pr-2 flex-1">
             <h1 class="text-xs font-bold tracking-wide text-amber-400 flex items-center gap-1.5 truncate">
@@ -65,27 +40,18 @@
             </p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-            <!-- Tasto Installazione PWA (Inizialmente nascosto) -->
-            <button id="btn-install" class="hidden bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 text-[10px] px-2 py-1 rounded-lg font-medium flex items-center gap-1 active:scale-95 transition" title="Installa App">
+            <button id="btn-install" class="hidden bg-blue-600 hover:bg-blue-500 text-white border border-blue-500 text-[10px] px-2 py-1 rounded-lg font-medium flex items-center gap-1 active:scale-95 transition">
                 <i class="fa-solid fa-download"></i> Installa App
             </button>
-            <button id="btn-reset-counter" class="bg-gray-800 hover:bg-gray-700 text-amber-400 border border-gray-700 text-[10px] px-2 py-1 rounded-lg font-medium flex items-center gap-1 active:scale-95 transition" title="Resetta contatore">
+            <button id="btn-reset-counter" class="bg-gray-800 hover:bg-gray-700 text-amber-400 border border-gray-700 text-[10px] px-2 py-1 rounded-lg font-medium flex items-center gap-1 active:scale-95 transition">
                 <i class="fa-solid fa-rotate-right"></i> Reset #
             </button>
-            <div id="offline-badge" class="hidden bg-red-600/20 text-red-400 border border-red-500/35 text-[9px] px-2 py-0.5 rounded-full font-semibold">
-                OFFLINE
-            </div>
         </div>
     </header>
 
-    <!-- VIEWPORT FOTOCAMERA -->
     <main id="main-viewport" class="relative w-full flex-1 bg-black flex items-center justify-center overflow-hidden">
         <video id="camera-feed" autoplay playsinline class="absolute inset-0 w-full h-full object-cover"></video>
         <canvas id="photo-canvas" class="hidden"></canvas>
-
-        <div id="refresh-indicator" class="absolute top-4 left-1/2 -translate-x-1/2 bg-amber-500 text-black text-[10px] font-bold px-3 py-1 rounded-full shadow-lg transition-all duration-300 -translate-y-12 opacity-0 z-20 flex items-center gap-1">
-            <i class="fa-solid fa-rotate animate-spin"></i> Aggiornamento...
-        </div>
 
         <div class="absolute bottom-3 left-3 right-3 pointer-events-none flex flex-col justify-end z-10">
             <div id="overlay-box" class="bg-black/65 backdrop-blur-md p-2 rounded-lg border border-white/15 max-w-[280px] text-[10px] space-y-0.5 shadow-lg">
@@ -96,9 +62,7 @@
         </div>
     </main>
 
-    <!-- CONTROLLI INFERIORI -->
     <footer class="w-full bg-gray-900 px-3 py-3 flex items-center justify-between border-t border-gray-800 z-10 shrink-0 gap-2">
-        <!-- Tasto Esci -->
         <button id="btn-exit" class="flex flex-col items-center justify-center bg-red-900/40 text-red-400 border border-red-800/50 rounded-xl w-12 h-12 shrink-0 active:scale-95 transition shadow-lg">
             <i class="fa-solid fa-power-off text-sm mb-0.5"></i>
             <span class="text-[8px] font-bold">ESCI</span>
@@ -112,11 +76,18 @@
             <span id="photo-counter-badge" class="absolute -top-1 -right-1 bg-amber-500 text-black text-[9px] font-black px-1.5 py-0.2 rounded-full">0</span>
         </button>
 
-        <button id="btn-capture" class="w-16 h-16 rounded-full border-3 border-white flex items-center justify-center focus:outline-none active:scale-90 transition shadow-xl shrink-0">
-            <div class="bg-white rounded-full w-[52px] h-[52px]"></div>
-        </button>
+        <!-- Pulsanti di Scatto e Importazione uniti al centro -->
+        <div class="flex items-center gap-2">
+            <button id="btn-capture" class="w-14 h-14 rounded-full border-3 border-white flex items-center justify-center focus:outline-none active:scale-90 transition shadow-xl shrink-0">
+                <div class="bg-white rounded-full w-[46px] h-[46px]"></div>
+            </button>
+            <label for="file-upload" class="w-10 h-10 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-white cursor-pointer active:scale-90 transition shadow-lg border border-gray-600">
+                <i class="fa-solid fa-folder-open text-sm"></i>
+            </label>
+            <input type="file" id="file-upload" accept="image/*" class="hidden">
+        </div>
 
-        <div class="flex flex-col justify-center bg-gray-800/90 border border-gray-700 px-2.5 py-1.5 rounded-xl shrink-0 w-[110px] shadow-lg">
+        <div class="flex flex-col justify-center bg-gray-800/90 border border-gray-700 px-2.5 py-1.5 rounded-xl shrink-0 w-[100px] shadow-lg">
             <span class="text-[9px] text-gray-400 font-semibold mb-0.5 flex items-center gap-1">
                 <i class="fa-solid fa-tag text-amber-400"></i> Categoria
             </span>
@@ -132,53 +103,51 @@
     <!-- MODALE GALLERIA -->
     <div id="gallery-modal" class="fixed inset-0 bg-black/95 z-50 hidden flex flex-col">
         <div class="p-3 bg-gray-900 flex justify-between items-center border-b border-gray-800 shrink-0">
-            <div class="flex items-center gap-2">
-                <button id="btn-close-gallery" class="flex items-center gap-1 text-xs bg-gray-800 hover:bg-gray-700 text-gray-200 px-3 py-1.5 rounded-lg font-medium transition border border-gray-700">
-                    <i class="fa-solid fa-arrow-left"></i> Indietro
-                </button>
-            </div>
+            <button id="btn-close-gallery" class="flex items-center gap-1 text-xs bg-gray-800 text-gray-200 px-3 py-1.5 rounded-lg font-medium border border-gray-700">
+                <i class="fa-solid fa-arrow-left"></i> Indietro
+            </button>
             <div class="flex items-center gap-3">
                 <span class="text-xs font-bold text-gray-300"><span id="gallery-total-count" class="text-amber-400">0</span> Foto</span>
-                <button id="btn-toggle-select" class="text-xs bg-gray-800 hover:bg-gray-700 px-2.5 py-1.5 rounded-lg font-medium transition border border-gray-700">Seleziona</button>
+                <button id="btn-toggle-select" class="text-xs bg-gray-800 px-2.5 py-1.5 rounded-lg font-medium border border-gray-700">Seleziona</button>
             </div>
         </div>
-
         <div id="gallery-content" class="flex-1 overflow-y-auto p-3 space-y-4"></div>
-
         <div id="selection-toolbar" class="hidden bg-gray-900 border-t border-gray-800 p-2.5 flex justify-between items-center shrink-0">
             <span id="selected-count-label" class="text-xs text-gray-400">0 sel.</span>
             <div class="flex gap-2">
-                <button id="btn-bulk-share" class="bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 transition disabled:opacity-50" disabled>
+                <button id="btn-bulk-share" class="bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 disabled:opacity-50" disabled>
                     <i class="fa-solid fa-share-nodes"></i> Condividi
                 </button>
-                <button id="btn-bulk-delete" class="bg-red-600 hover:bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg font-medium flex items-center gap-1 transition disabled:opacity-50" disabled>
+                <button id="btn-bulk-delete" class="bg-red-600 text-white text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 disabled:opacity-50" disabled>
                     <i class="fa-solid fa-trash"></i> Elimina
                 </button>
             </div>
         </div>
     </div>
 
-    <!-- MODALE AZIONE SINGOLA FOTO -->
+    <!-- MODALE AZIONE SINGOLA -->
     <div id="single-photo-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-gray-900 border border-gray-800 rounded-xl max-w-xs w-full p-4 flex flex-col items-center shadow-2xl">
             <img id="single-photo-preview" src="" class="w-48 h-48 object-cover rounded-lg mb-3 border border-gray-800">
             <h3 id="single-photo-title" class="text-xs font-bold text-amber-400 mb-1">Foto</h3>
             <p id="single-photo-info" class="text-[10px] text-gray-300 text-center mb-4 truncate w-full"></p>
             <div class="flex gap-2 w-full">
-                <button id="btn-single-share" class="flex-1 bg-blue-600 hover:bg-blue-500 text-white text-xs py-2 rounded-lg font-semibold flex items-center justify-center gap-1.5 transition">
+                <button id="btn-single-share" class="flex-1 bg-blue-600 text-white text-xs py-2 rounded-lg font-semibold flex items-center justify-center gap-1.5">
                     <i class="fa-solid fa-share-nodes"></i> Condividi
                 </button>
-                <button id="btn-single-delete" class="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-3 py-2 rounded-lg text-xs font-semibold transition" title="Elimina foto">
+                <button id="btn-single-delete" class="bg-red-600/20 text-red-400 hover:bg-red-600 hover:text-white px-3 py-2 rounded-lg text-xs font-semibold">
                     <i class="fa-solid fa-trash"></i>
                 </button>
             </div>
-            <button id="btn-close-single" class="mt-3 text-[11px] text-gray-500 hover:text-gray-300">Chiudi</button>
+            <button id="btn-close-single" class="mt-3 text-[11px] text-gray-500">Chiudi</button>
         </div>
     </div>
 
-    <!-- SCRIPT APPLICATIVO -->
     <script>
-        // Gestione Installazione PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').catch(console.error);
+        }
+
         let deferredPrompt;
         const installBtn = document.getElementById('btn-install');
         window.addEventListener('beforeinstallprompt', (e) => {
@@ -190,419 +159,224 @@
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    installBtn.classList.add('hidden');
-                }
+                if (outcome === 'accepted') installBtn.classList.add('hidden');
                 deferredPrompt = null;
             }
         });
 
-        // Service Worker condizionale offline
-        if ('serviceWorker' in navigator) {
-            const swCode = `
-                self.addEventListener('install', (e) => { self.skipWaiting(); });
-                self.addEventListener('activate', (e) => { e.waitUntil(clients.claim()); });
-                self.addEventListener('fetch', (e) => {
-                    if (e.request.url.includes('tailwindcss') || e.request.url.includes('font-awesome')) return;
-                    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-                });
-            `;
-            navigator.serviceWorker.register(URL.createObjectURL(new Blob([swCode], { type: 'text/javascript' }))).catch(() => {});
-        }
-
         let stream = null;
-        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v5') || '[]');
-        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v5') || '0');
+        let photos = JSON.parse(localStorage.getItem('gps_photos_pwa_v6') || '[]');
+        let photoCounter = parseInt(localStorage.getItem('gps_photos_counter_pwa_v6') || '0');
+        let currentGPS = { lat: 0, lon: 0 };
         let isSelectionMode = false;
         let selectedPhotoIds = new Set();
         let currentActivePhotoId = null;
-        let currentGPS = { lat: 0, lon: 0 };
 
         const videoElem = document.getElementById('camera-feed');
         const canvasElem = document.getElementById('photo-canvas');
         const spLabel = document.getElementById('sp-label');
         const locationLabel = document.getElementById('location-label');
-        const offlineBadge = document.getElementById('offline-badge');
         const categorySelect = document.getElementById('category-select');
-        const refreshIndicator = document.getElementById('refresh-indicator');
-        const mainViewport = document.getElementById('main-viewport');
-        
         const overlayCategory = document.getElementById('overlay-category');
-        const overlayAddr = document.getElementById('overlay-addr');
         const overlayCoords = document.getElementById('overlay-coords');
-
-        const previewThumb = document.getElementById('preview-thumb');
-        const previewPlaceholder = document.getElementById('preview-placeholder');
-        const photoCounterBadge = document.getElementById('photo-counter-badge');
-
-        const singlePhotoModal = document.getElementById('single-photo-modal');
-        const singlePhotoPreview = document.getElementById('single-photo-preview');
-        const singlePhotoTitle = document.getElementById('single-photo-title');
-        const singlePhotoInfo = document.getElementById('single-photo-info');
+        const fileUpload = document.getElementById('file-upload');
 
         async function initCamera() {
             if (stream) stream.getTracks().forEach(track => track.stop());
             try {
                 stream = await navigator.mediaDevices.getUserMedia({
-                    video: { facingMode: { exact: "environment" }, width: { ideal: 1280 }, height: { ideal: 720 } }
+                    video: { facingMode: { exact: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }
                 });
                 videoElem.srcObject = stream;
             } catch (err) {
-                try {
-                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                    videoElem.srcObject = stream;
-                } catch (e) {
-                    alert("Impossibile accedere alla fotocamera posteriore.");
-                }
+                stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                videoElem.srcObject = stream;
             }
         }
 
         function initGPS() {
-            if (!navigator.geolocation) {
-                locationLabel.textContent = "GPS non supportato";
-                return;
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition((position) => {
+                    currentGPS.lat = position.coords.latitude;
+                    currentGPS.lon = position.coords.longitude;
+                    const coordStr = `Lat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)}`;
+                    spLabel.textContent = "GPS Connesso";
+                    locationLabel.textContent = coordStr;
+                    overlayCoords.textContent = coordStr;
+                }, null, { enableHighAccuracy: true });
             }
-            navigator.geolocation.watchPosition((position) => {
-                currentGPS.lat = position.coords.latitude;
-                currentGPS.lon = position.coords.longitude;
-                const coordStr = `Lat: ${currentGPS.lat.toFixed(5)}, Lon: ${currentGPS.lon.toFixed(5)}`;
-                
-                spLabel.textContent = "GPS Connesso";
-                locationLabel.textContent = coordStr;
-                overlayCoords.textContent = coordStr;
-                overlayAddr.textContent = "Posizione rilevata";
-            }, (error) => {
-                locationLabel.textContent = "Segnale GPS assente o permessi negati";
-                overlayAddr.textContent = "Attivare geolocalizzazione";
-            }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 });
         }
 
-        let startY = 0;
-        mainViewport.addEventListener('touchstart', (e) => {
-            if (mainViewport.scrollTop === 0) startY = e.touches[0].clientY;
-        }, { passive: true });
+        categorySelect.addEventListener('change', () => overlayCategory.textContent = categorySelect.value);
 
-        mainViewport.addEventListener('touchmove', (e) => {
-            if (startY && e.touches[0].clientY - startY > 90) {
-                refreshIndicator.classList.remove('-translate-y-12', 'opacity-0');
-                initCamera();
-                initGPS();
-                setTimeout(() => refreshIndicator.classList.add('-translate-y-12', 'opacity-0'), 1200);
-                startY = 0;
+        function drawGPSOverlay(canvas, ctx, callback) {
+            // Calcolo proporzionale dell'altezza del pannello basato sull'immagine
+            const panelH = Math.max(160, canvas.height * 0.18); 
+            const panelY = canvas.height - panelH;
+            
+            ctx.fillStyle = "rgba(0, 0, 0, 0.75)";
+            ctx.fillRect(0, panelY, canvas.width, panelH);
+            ctx.fillStyle = "rgba(255, 152, 0, 0.9)";
+            ctx.fillRect(0, panelY, 15, panelH);
+
+            const mapImg = new Image();
+            mapImg.crossOrigin = "anonymous"; 
+            mapImg.src = `https://staticmap.openstreetmap.de/staticmap.php?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=160x160&maptype=mapnik&markers=${currentGPS.lat},${currentGPS.lon},red-pushpin`;
+
+            mapImg.onload = () => finishDrawingMap(mapImg);
+            mapImg.onerror = () => finishDrawingMap(null);
+
+            function finishDrawingMap(img) {
+                // Dimensione dinamica mappa
+                const mapSize = panelH * 0.8; 
+                const mapX = 30;
+                const mapY = panelY + (panelH - mapSize) / 2;
+
+                if (img) {
+                    ctx.drawImage(img, mapX, mapY, mapSize, mapSize);
+                    ctx.strokeStyle = "white";
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(mapX, mapY, mapSize, mapSize);
+                }
+
+                // Testi scalati in base all'immagine
+                const textX = mapX + mapSize + 25;
+                const baseFontSize = Math.max(14, canvas.width * 0.025);
+                const now = new Date();
+                
+                ctx.fillStyle = "white";
+                ctx.font = `bold ${baseFontSize * 1.2}px sans-serif`;
+                ctx.fillText(`Coordinate Geografiche:`, textX, mapY + (mapSize * 0.25));
+                
+                ctx.font = `${baseFontSize}px sans-serif`;
+                ctx.fillStyle = "#e2e8f0";
+                ctx.fillText(`Lat: ${currentGPS.lat.toFixed(6)}`, textX, mapY + (mapSize * 0.50));
+                ctx.fillText(`Lon: ${currentGPS.lon.toFixed(6)}`, textX, mapY + (mapSize * 0.70));
+                
+                ctx.fillStyle = "#fbbf24";
+                ctx.font = `bold ${baseFontSize * 0.9}px sans-serif`;
+                ctx.fillText(`Data: ${now.toLocaleDateString()} Ora: ${now.toLocaleTimeString()}`, textX, mapY + (mapSize * 0.95));
+                
+                callback();
             }
-        }, { passive: true });
+        }
 
-        categorySelect.addEventListener('change', () => { overlayCategory.textContent = categorySelect.value; });
-
-        document.getElementById('btn-reset-counter').addEventListener('click', () => {
-            if (confirm("Azzerare la numerazione delle foto?")) {
-                photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_pwa_v5', 0);
-                updatePreviewUI();
-            }
-        });
-
-        // Uscita dall'app
-        document.getElementById('btn-exit').addEventListener('click', () => {
-            if (confirm("Vuoi chiudere l'applicazione?")) {
-                window.close(); // Nota: i browser limitano window.close() via script, ma funziona bene nelle PWA installate.
-            }
-        });
-
-        window.addEventListener('online', () => offlineBadge.classList.add('hidden'));
-        window.addEventListener('offline', () => offlineBadge.classList.remove('hidden'));
-
-        // Funzione per salvare la foto finita
-        function finalizePhoto(canvas, ctx) {
+        function finalizePhoto(canvas) {
             photoCounter++;
             const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
-            
             const now = new Date();
-            const photoObj = {
+            
+            photos.unshift({
                 id: 'photo_' + Date.now(),
                 number: photoCounter,
                 category: categorySelect.value,
                 dateStr: now.toLocaleDateString(),
                 timestamp: now.toISOString(),
                 data: dataUrl,
-                info: `Foto #${photoCounter} - Lat: ${currentGPS.lat}, Lon: ${currentGPS.lon}`
-            };
-
-            photos.unshift(photoObj);
-            localStorage.setItem('gps_photos_pwa_v5', JSON.stringify(photos));
-            localStorage.setItem('gps_photos_counter_pwa_v5', photoCounter);
+                info: `Lat: ${currentGPS.lat}, Lon: ${currentGPS.lon}`
+            });
+            
+            localStorage.setItem('gps_photos_pwa_v6', JSON.stringify(photos));
+            localStorage.setItem('gps_photos_counter_pwa_v6', photoCounter);
             updatePreviewUI();
-
-            videoElem.classList.add('opacity-40');
-            setTimeout(() => videoElem.classList.remove('opacity-40'), 150);
         }
 
-        // Scatto foto stile App GPS Map Camera originale
+        // Scatto Fotocamera
         document.getElementById('btn-capture').addEventListener('click', () => {
             const canvas = canvasElem;
-            canvas.width = videoElem.videoWidth || 1280;
-            canvas.height = videoElem.videoHeight || 720;
+            canvas.width = videoElem.videoWidth;
+            canvas.height = videoElem.videoHeight;
             const ctx = canvas.getContext('2d');
-            
             ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
-
-            // Dimensioni e posizione della fascia inferiore stile originale
-            const panelH = 200;
-            const panelY = canvas.height - panelH;
             
-            // Sfondo scuro semi-trasparente a tutta larghezza
-            ctx.fillStyle = "rgba(0, 0, 0, 0.65)";
-            ctx.fillRect(0, panelY, canvas.width, panelH);
-            ctx.fillStyle = "rgba(255, 152, 0, 0.8)";
-            ctx.fillRect(0, panelY, 8, panelH); // Riga colorata laterale
+            videoElem.classList.add('opacity-40');
+            setTimeout(() => videoElem.classList.remove('opacity-40'), 150);
 
-            // Caricamento mappa di Google (Usa una Static Map tramite proxy o OSM per evitare errori CORS nel Canvas)
-            // Sostituire 'INSERISCI_LA_TUA_API_KEY_QUI' con la vera key. Al momento utilizza OSM per garanzia di funzionamento.
-            const mapImg = new Image();
-            mapImg.crossOrigin = "anonymous"; 
-            
-            // URL Google Maps Static di riferimento:
-            // const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=160x160&maptype=roadmap&markers=color:red%7C${currentGPS.lat},${currentGPS.lon}&key=INSERISCI_LA_TUA_API_KEY_QUI`;
-            
-            // URL Alternativo funzionante senza key (OpenStreetMap formattato per dimensione miniatura):
-            const mapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${currentGPS.lat},${currentGPS.lon}&zoom=16&size=160x160&maptype=mapnik&markers=${currentGPS.lat},${currentGPS.lon},red-pushpin`;
-            
-            mapImg.src = mapUrl;
+            drawGPSOverlay(canvas, ctx, () => finalizePhoto(canvas));
+        });
 
-            mapImg.onload = () => {
-                // Disegna miniatura mappa a sinistra
-                const mapX = 25;
-                const mapY = panelY + 20;
-                ctx.drawImage(mapImg, mapX, mapY, 160, 160);
-                
-                // Bordo bianco per la mappa
-                ctx.strokeStyle = "white";
-                ctx.lineWidth = 3;
-                ctx.strokeRect(mapX, mapY, 160, 160);
-
-                // Testi e informazioni sulla destra della mappa
-                const textX = mapX + 185;
-                const now = new Date();
-                
-                ctx.fillStyle = "white";
-                ctx.font = "bold 26px sans-serif";
-                ctx.fillText(`Coordinate:`, textX, panelY + 45);
-                
-                ctx.font = "24px sans-serif";
-                ctx.fillStyle = "#e2e8f0";
-                ctx.fillText(`Lat: ${currentGPS.lat.toFixed(6)}`, textX, panelY + 80);
-                ctx.fillText(`Lon: ${currentGPS.lon.toFixed(6)}`, textX, panelY + 115);
-                
-                ctx.fillStyle = "#fbbf24";
-                ctx.font = "bold 22px sans-serif";
-                ctx.fillText(`Data: ${now.toLocaleDateString()}  Ora: ${now.toLocaleTimeString()}`, textX, panelY + 150);
-                
-                ctx.fillStyle = "#94a3b8";
-                ctx.font = "20px sans-serif";
-                ctx.fillText(`Categoria: ${categorySelect.value} | Riferimento: #${photoCounter + 1}`, textX, panelY + 180);
-
-                finalizePhoto(canvas, ctx);
+        // Importazione da Galleria Nativa
+        fileUpload.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = canvasElem;
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    drawGPSOverlay(canvas, ctx, () => {
+                        finalizePhoto(canvas);
+                        alert("Foto importata e geolocalizzata con successo!");
+                    });
+                };
+                img.src = event.target.result;
             };
-
-            mapImg.onerror = () => {
-                // Fallback nel caso in cui la mappa non carichi (es. offline)
-                ctx.fillStyle = "#333";
-                ctx.fillRect(25, panelY + 20, 160, 160);
-                ctx.fillStyle = "white";
-                ctx.font = "20px sans-serif";
-                ctx.fillText("Mappa non", 45, panelY + 90);
-                ctx.fillText("disponibile", 45, panelY + 120);
-                finalizePhoto(canvas, ctx);
-            };
+            reader.readAsDataURL(file);
+            // Reset input per permettere di ricaricare la stessa foto
+            e.target.value = '';
         });
 
         function updatePreviewUI() {
-            photoCounterBadge.textContent = photoCounter;
+            document.getElementById('photo-counter-badge').textContent = photoCounter;
+            const thumb = document.getElementById('preview-thumb');
+            const placeholder = document.getElementById('preview-placeholder');
             if (photos.length > 0) {
-                previewThumb.src = photos[0].data;
-                previewThumb.classList.remove('hidden');
-                previewPlaceholder.classList.add('hidden');
+                thumb.src = photos[0].data;
+                thumb.classList.remove('hidden');
+                placeholder.classList.add('hidden');
             } else {
-                previewThumb.classList.add('hidden');
-                previewPlaceholder.classList.remove('hidden');
-                photoCounter = 0;
-                localStorage.setItem('gps_photos_counter_pwa_v5', 0);
-                photoCounterBadge.textContent = 0;
+                thumb.classList.add('hidden');
+                placeholder.classList.remove('hidden');
             }
         }
 
+        // Gestione Base UI (Galleria e Modali)
+        document.getElementById('btn-reset-counter').addEventListener('click', () => {
+            if (confirm("Azzerare la numerazione delle foto?")) { photoCounter = 0; localStorage.setItem('gps_photos_counter_pwa_v6', 0); updatePreviewUI(); }
+        });
+        document.getElementById('btn-exit').addEventListener('click', () => { if(confirm("Chiudere l'app?")) window.close(); });
+
         const galleryModal = document.getElementById('gallery-modal');
-        document.getElementById('btn-gallery-open').addEventListener('click', () => {
-            renderGallery();
-            galleryModal.classList.remove('hidden');
-        });
-        document.getElementById('btn-close-gallery').addEventListener('click', () => {
-            galleryModal.classList.add('hidden');
-            exitSelectionMode();
-        });
+        document.getElementById('btn-gallery-open').addEventListener('click', () => { renderGallery(); galleryModal.classList.remove('hidden'); });
+        document.getElementById('btn-close-gallery').addEventListener('click', () => { galleryModal.classList.add('hidden'); isSelectionMode = false; });
+        document.getElementById('btn-close-single').addEventListener('click', () => document.getElementById('single-photo-modal').classList.add('hidden'));
 
         function renderGallery() {
             const container = document.getElementById('gallery-content');
             container.innerHTML = '';
             document.getElementById('gallery-total-count').textContent = photos.length;
+            if (photos.length === 0) return container.innerHTML = `<div class="text-center text-gray-500 py-16">Nessuna foto salvata</div>`;
 
-            if (photos.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-500 py-16"><i class="fa-solid fa-folder-open text-3xl mb-2"></i><p class="text-xs">Nessuna foto salvata</p></div>`;
-                return;
-            }
-
-            const grouped = {};
-            photos.forEach(p => {
-                if (!grouped[p.dateStr]) grouped[p.dateStr] = [];
-                grouped[p.dateStr].push(p);
-            });
-
-            for (const [day, dayPhotos] of Object.entries(grouped)) {
-                const daySection = document.createElement('div');
-                daySection.innerHTML = `
-                    <div class="text-[10px] font-bold text-amber-400 mb-1.5 uppercase tracking-wider sticky top-0 bg-black/95 py-1 backdrop-blur z-10">${day}</div>
-                    <div class="grid grid-cols-3 gap-1.5"></div>
-                `;
-                const grid = daySection.querySelector('.grid');
-
-                dayPhotos.forEach(photo => {
-                    const item = document.createElement('div');
-                    item.className = `relative aspect-square bg-gray-900 rounded-md overflow-hidden border-2 ${selectedPhotoIds.has(photo.id) ? 'border-amber-500' : 'border-transparent'}`;
-                    item.innerHTML = `
-                        <img src="${photo.data}" class="w-full h-full object-cover">
-                        <div class="absolute top-0.5 left-0.5 bg-black/70 text-white text-[9px] font-bold px-1 py-0.5 rounded">#${photo.number}</div>
-                        <div class="absolute bottom-0.5 right-0.5 bg-amber-500/90 text-black text-[8px] font-bold px-1 rounded truncate max-w-[80%]">${photo.category}</div>
-                        ${isSelectionMode ? `<div class="absolute top-0.5 right-0.5 w-4 h-4 rounded-full border border-white flex items-center justify-center ${selectedPhotoIds.has(photo.id) ? 'bg-amber-500 text-black' : 'bg-black/40'}"><i class="fa-solid fa-check text-[9px] ${selectedPhotoIds.has(photo.id) ? '' : 'hidden'}"></i></div>` : ''}
-                    `;
-                    
-                    item.addEventListener('click', () => {
-                        if (isSelectionMode) {
-                            if (selectedPhotoIds.has(photo.id)) selectedPhotoIds.delete(photo.id);
-                            else selectedPhotoIds.add(photo.id);
-                            renderGallery();
-                            updateSelectionToolbar();
-                        } else {
-                            currentActivePhotoId = photo.id;
-                            singlePhotoPreview.src = photo.data;
-                            singlePhotoTitle.textContent = `Foto #${photo.number} [${photo.category}]`;
-                            singlePhotoInfo.textContent = photo.info;
-                            singlePhotoModal.classList.remove('hidden');
-                        }
-                    });
-                    grid.appendChild(item);
+            photos.forEach(photo => {
+                const item = document.createElement('div');
+                item.className = `relative aspect-square bg-gray-900 rounded-md overflow-hidden border-2 ${selectedPhotoIds.has(photo.id) ? 'border-amber-500' : 'border-transparent'} inline-block w-[31%] m-[1%]`;
+                item.innerHTML = `<img src="${photo.data}" class="w-full h-full object-cover"><div class="absolute top-0.5 left-0.5 bg-black/70 text-white text-[9px] font-bold px-1 rounded">#${photo.number}</div>`;
+                
+                item.addEventListener('click', () => {
+                    if (isSelectionMode) {
+                        selectedPhotoIds.has(photo.id) ? selectedPhotoIds.delete(photo.id) : selectedPhotoIds.add(photo.id);
+                        renderGallery();
+                    } else {
+                        currentActivePhotoId = photo.id;
+                        document.getElementById('single-photo-preview').src = photo.data;
+                        document.getElementById('single-photo-title').textContent = `Foto #${photo.number}`;
+                        document.getElementById('single-photo-modal').classList.remove('hidden');
+                    }
                 });
-                container.appendChild(daySection);
-            }
+                container.appendChild(item);
+            });
         }
 
-        document.getElementById('btn-close-single').addEventListener('click', () => {
-            singlePhotoModal.classList.add('hidden');
-        });
-
-        // Condivisione pulita
-        document.getElementById('btn-single-share').addEventListener('click', async () => {
-            const photo = photos.find(p => p.id === currentActivePhotoId);
-            if (!photo) return;
-            if (navigator.share) {
-                try {
-                    const blob = await (await fetch(photo.data)).blob();
-                    const file = new File([blob], `Foto_${photo.number}.jpg`, { type: 'image/jpeg' });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({ files: [file] });
-                        return;
-                    }
-                } catch (e) {}
-            }
-            alert("Condivisione non supportata.");
-        });
-
-        document.getElementById('btn-single-delete').addEventListener('click', () => {
-            if (confirm("Eliminare questa foto?")) {
-                photos = photos.filter(p => p.id !== currentActivePhotoId);
-                if (photos.length === 0) {
-                    photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_pwa_v5', 0);
-                }
-                localStorage.setItem('gps_photos_pwa_v5', JSON.stringify(photos));
-                singlePhotoModal.classList.add('hidden');
-                renderGallery();
-                updatePreviewUI();
-            }
-        });
-
-        const btnToggleSelect = document.getElementById('btn-toggle-select');
-        const selectionToolbar = document.getElementById('selection-toolbar');
-        const selectedCountLabel = document.getElementById('selected-count-label');
-        const btnBulkShare = document.getElementById('btn-bulk-share');
-        const btnBulkDelete = document.getElementById('btn-bulk-delete');
-
-        btnToggleSelect.addEventListener('click', () => {
+        document.getElementById('btn-toggle-select').addEventListener('click', () => {
             isSelectionMode = !isSelectionMode;
-            if (isSelectionMode) {
-                btnToggleSelect.textContent = "Annulla";
-                btnToggleSelect.classList.add('bg-amber-500', 'text-black');
-                selectionToolbar.classList.remove('hidden');
-            } else {
-                exitSelectionMode();
-            }
-            renderGallery();
+            document.getElementById('selection-toolbar').classList.toggle('hidden', !isSelectionMode);
         });
 
-        function exitSelectionMode() {
-            isSelectionMode = false;
-            selectedPhotoIds.clear();
-            btnToggleSelect.textContent = "Seleziona";
-            btnToggleSelect.classList.remove('bg-amber-500', 'text-black');
-            selectionToolbar.classList.add('hidden');
-            updateSelectionToolbar();
-        }
-
-        function updateSelectionToolbar() {
-            const count = selectedPhotoIds.size;
-            selectedCountLabel.textContent = `${count} sel.`;
-            btnBulkShare.disabled = count === 0;
-            btnBulkDelete.disabled = count === 0;
-        }
-
-        btnBulkDelete.addEventListener('click', () => {
-            if (confirm(`Eliminare ${selectedPhotoIds.size} foto selezionate?`)) {
-                photos = photos.filter(p => !selectedPhotoIds.has(p.id));
-                if (photos.length === 0) {
-                    photoCounter = 0;
-                    localStorage.setItem('gps_photos_counter_pwa_v5', 0);
-                }
-                localStorage.setItem('gps_photos_pwa_v5', JSON.stringify(photos));
-                exitSelectionMode();
-                renderGallery();
-                updatePreviewUI();
-            }
-        });
-
-        btnBulkShare.addEventListener('click', async () => {
-            const selectedPhotos = photos.filter(p => selectedPhotoIds.has(p.id));
-            if (navigator.share) {
-                try {
-                    let filesArray = [];
-                    for (let p of selectedPhotos) {
-                        const blob = await (await fetch(p.data)).blob();
-                        filesArray.push(new File([blob], `Foto_${p.number}.jpg`, { type: 'image/jpeg' }));
-                    }
-                    if (navigator.canShare && navigator.canShare({ files: filesArray })) {
-                        await navigator.share({ files: filesArray });
-                        return;
-                    }
-                } catch (e) {}
-            }
-            alert(`Condivisione di ${selectedPhotos.length} foto pronta.`);
-        });
-
-        window.addEventListener('load', () => {
-            initCamera();
-            initGPS();
-            if (navigator.onLine) offlineBadge.classList.add('hidden');
-            else offlineBadge.classList.remove('hidden');
-            updatePreviewUI();
-        });
+        window.onload = () => { initCamera(); initGPS(); updatePreviewUI(); };
     </script>
 </body>
 </html>
