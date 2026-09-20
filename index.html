@@ -82,14 +82,6 @@
             <span class="text-[8px] font-bold">ESCI</span>
         </button>
 
-        <button id="btn-gallery-open" class="relative w-12 h-12 rounded-xl bg-gray-800 border-2 border-gray-700 overflow-hidden focus:outline-none shadow-lg active:scale-95 transition shrink-0 flex items-center justify-center">
-            <img id="preview-thumb" src="" alt="" class="w-full h-full object-cover hidden">
-            <div id="preview-placeholder" class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                <i class="fa-solid fa-images"></i>
-            </div>
-            <span id="photo-counter-badge" class="absolute -top-1 -right-1 bg-amber-500 text-black text-[9px] font-black px-1.5 py-0.5 rounded-full shadow-md">0</span>
-        </button>
-
         <div class="flex items-center gap-2">
             <button id="btn-capture" class="w-16 h-16 rounded-full border-[3px] border-white flex items-center justify-center focus:outline-none active:scale-90 transition shadow-xl shrink-0 bg-gray-300/20">
                 <div class="bg-white rounded-full w-[52px] h-[52px] shadow-sm"></div>
@@ -332,7 +324,6 @@
             const mapY = panelY + (panelH - mapSize) / 2;
 
             try {
-                // Cattura l'esatta mappa Leaflet visibile sullo schermo usando html2canvas
                 const mapThumbElement = document.getElementById('live-map-thumb');
                 const mapCanvas = await html2canvas(mapThumbElement, { useCORS: true, allowTaint: true });
                 
@@ -344,7 +335,6 @@
                 ctx.lineWidth = 4;
                 ctx.strokeRect(mapX, mapY, mapSize, mapSize);
             } catch (err) {
-                // Fallback se la cattura fallisce
                 ctx.fillStyle = "#1e293b";
                 ctx.fillRect(mapX, mapY, mapSize, mapSize);
                 ctx.strokeStyle = "white";
@@ -448,17 +438,7 @@
         });
 
         function updatePreviewUI() {
-            document.getElementById('photo-counter-badge').textContent = photoCounter;
-            const thumb = document.getElementById('preview-thumb');
-            const placeholder = document.getElementById('preview-placeholder');
-            if (photos.length > 0) {
-                thumb.src = photos[0].data;
-                thumb.classList.remove('hidden');
-                placeholder.classList.add('hidden');
-            } else {
-                thumb.classList.add('hidden');
-                placeholder.classList.remove('hidden');
-            }
+            // Mantenuto per compatibilità interna nel salvataggio/storage senza il pulsante visibile
         }
 
         function recalculateCounter() {
@@ -479,89 +459,18 @@
         });
 
         const galleryModal = document.getElementById('gallery-modal');
-        document.getElementById('btn-gallery-open').addEventListener('click', () => { 
-            renderGallery(); 
-            galleryModal.classList.remove('hidden'); 
-        });
-        
-        document.getElementById('btn-close-gallery').addEventListener('click', () => { 
-            galleryModal.classList.add('hidden'); 
-        });
-        
-        document.getElementById('btn-close-single').addEventListener('click', () => {
-            document.getElementById('single-photo-modal').classList.add('hidden')
-        });
-
-        document.getElementById('btn-single-delete').addEventListener('click', () => {
-            if(confirm("Sei sicuro di voler eliminare questa foto?")) {
-                photos = photos.filter(p => p.id !== currentActivePhotoId);
-                recalculateCounter();
-                localStorage.setItem('gps_photos_pwa_v13', JSON.stringify(photos));
-                document.getElementById('single-photo-modal').classList.add('hidden');
-                renderGallery();
-                updatePreviewUI();
-            }
-        });
-
-        document.getElementById('btn-single-share').addEventListener('click', async () => {
-            const photo = photos.find(p => p.id === currentActivePhotoId);
-            if (!photo) return;
-            if (navigator.share) {
-                try {
-                    const blob = await (await fetch(photo.data)).blob();
-                    const file = new File([blob], `Foto_GPS_${photo.number}.jpg`, { type: 'image/jpeg' });
-                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                        await navigator.share({ files: [file], title: `Foto GPS #${photo.number}` });
-                    }
-                } catch (e) {}
-            } else {
-                alert("Condivisione nativa non supportata dal browser.");
-            }
-        });
-
-        function renderGallery() {
-            const container = document.getElementById('gallery-content');
-            container.innerHTML = '';
-            document.getElementById('gallery-total-count').textContent = photos.length;
-            
-            if (photos.length === 0) {
-                container.innerHTML = `<div class="text-center text-gray-500 py-16"><i class="fa-solid fa-folder-open text-4xl mb-3"></i><br>Nessuna foto salvata</div>`;
-                return;
-            }
-
-            const grouped = {};
-            photos.forEach(photo => {
-                if (!grouped[photo.dateStr]) grouped[photo.dateStr] = [];
-                grouped[photo.dateStr].push(photo);
+        const btnCloseGallery = document.getElementById('btn-close-gallery');
+        if (btnCloseGallery) {
+            btnCloseGallery.addEventListener('click', () => { 
+                galleryModal.classList.add('hidden'); 
             });
-
-            for (const date in grouped) {
-                const dateHeader = document.createElement('div');
-                dateHeader.className = "text-amber-500 font-bold text-xs mt-4 mb-2 border-b border-gray-800 pb-1 sticky top-0 bg-gray-900/95 backdrop-blur z-10 px-1";
-                dateHeader.textContent = date;
-                container.appendChild(dateHeader);
-
-                const grid = document.createElement('div');
-                grid.className = "grid grid-cols-3 gap-1.5";
-
-                grouped[date].forEach(photo => {
-                    const item = document.createElement('div');
-                    item.className = `relative aspect-square bg-gray-800 rounded-lg overflow-hidden border border-gray-700 active:scale-95 transition-transform`;
-                    item.innerHTML = `
-                        <img src="${photo.data}" class="w-full h-full object-cover">
-                        <div class="absolute top-1 left-1 bg-black/80 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-md">#${photo.number}</div>
-                    `;
-                    item.addEventListener('click', () => {
-                        currentActivePhotoId = photo.id;
-                        document.getElementById('single-photo-preview').src = photo.data;
-                        document.getElementById('single-photo-title').textContent = `Foto #${photo.number}`;
-                        document.getElementById('single-photo-info').innerText = photo.info;
-                        document.getElementById('single-photo-modal').classList.remove('hidden');
-                    });
-                    grid.appendChild(item);
-                });
-                container.appendChild(grid);
-            }
+        }
+        
+        const btnCloseSingle = document.getElementById('btn-close-single');
+        if (btnCloseSingle) {
+            btnCloseSingle.addEventListener('click', () => {
+                document.getElementById('single-photo-modal').classList.add('hidden');
+            });
         }
 
         window.onload = () => { 
